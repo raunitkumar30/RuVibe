@@ -1,0 +1,19 @@
+npm init -y
+
+npm install express mongoose dotenv jsonwebtoken cookie-parser
+
+create src folder and create app.js and create in it require express and the make your own app
+
+create server.js and import app.js in it 
+
+in src folder create db and in that create db.js and require mongoose create connectdb function
+
+in src folder create model  and in moder create user.model.js and cretae the structure to store data
+
+in src fpolder create routes and in that create auth.routes.js and export to the app.js
+
+in src folder create controllers and write the logig of api created in the routes folder auth.route.js
+
+do above same for music.routes.js ---3 steps
+
+//6.59
