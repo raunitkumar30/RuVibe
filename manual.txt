@@ -16,4 +16,30 @@ in src folder create controllers and write the logig of api created in the route
 
 do above same for music.routes.js ---3 steps
 
+create album.model.js which is used to store all music belong to one album, since it work is not much so we dont need to create seperate controller and route for it we can use in music controller and music routes
+
+!!!IMPORTANT!!!
+since we notice that we are using """const token = req.cookies.token;
+
+    if (!token) {
+        return res.status(401).json({ message: "Unauthorized Access!!!" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if(decoded.role !== "artist") {
+            return res.status(403).json({ message: "You dont have permission to create album" });
+        }
+""" this again and again in the createmusic and createalbum so we make it as middleware we can use the same code!!!!
+
+
+!MIDDLEWARE!
+request ke ander jo bhi data aata hai sab read kr sakta hai 
+request ka ander jo bhi data aata hai uuse read bhi kar sakta hai
+response bhi send kar sakte hai
+
+
+
+
+
 //6.59
