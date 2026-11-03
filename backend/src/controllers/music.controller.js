@@ -99,6 +99,29 @@ async function logoutUser(req, res) {
 }
 
 
+async function searchMusic(req, res) {
+    const { q } = req.query;
+
+    if (!q || q.trim() === "") {
+        return res.status(400).json({ message: "Search query 'q' parameter is required" });
+    }
+
+    const musics = await musicModel
+        .find({
+            $or: [
+                { title: { $regex: q, $options: "i" } },
+                { genre: { $regex: q, $options: "i" } },
+            ],
+        })
+        .populate("artist", "username email role")
+        .limit(20);
+
+    return res.status(200).json({
+        message: "Search completed successfully",
+        totalResults: musics.length,
+        musics,
+    });
+}
 
 module.exports = {
     createMusic,
@@ -107,4 +130,5 @@ module.exports = {
     getAllAlbums,
     getAlbumById,
     logoutUser,
+    searchMusic,
 };
