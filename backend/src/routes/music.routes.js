@@ -23,4 +23,8 @@ router.get("/albums/:albumId", authMiddleware.authUser, musicController.getAlbum
 
 router.post("/logout", authMiddleware.authUser, musicController.logoutUser);
 
+router.post("/:musicId/like", authMiddleware.authUser, musicController.toggleLikeMusic);
+
+router.get("/liked", authMiddleware.authUser, musicController.getLikedMusics);
+
 module.exports = router;

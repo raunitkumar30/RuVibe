@@ -88,7 +88,25 @@ async function loginUser(req, res) {
 }
 
 
+async function getMe(req, res) {
+    const user = await userModel.findById(req.user.id).select("-password");
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+        user: {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+        },
+    });
+}
+
+
 module.exports = {
     registerUser,
-    loginUser
+    loginUser,
+    getMe,
 }

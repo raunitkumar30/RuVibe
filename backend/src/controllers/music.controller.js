@@ -1,32 +1,44 @@
 const musicModel = require("../models/music.model")
 const albumModel = require("../models/album.model");
 const { uploadFile } = require("../services/storage.service");
+const { getTrackMetadata } = require("../services/musicApi.service");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 
 async function createMusic(req, res) {
-    const { title } = req.body;
+    const { title, genre } = req.body;
     const file = req.file;
 
-    const result = await uploadFile(file.buffer.toString("base64"));
+    if (!file) {
+        return res.status(400).json({ message: "Audio file is required" });
+    }
 
+    if (!title) {
+        return res.status(400).json({ message: "Song title is required" });
+    }
+
+    // 1. Upload audio to ImageKit
+    const uploadResult = await uploadFile(file.buffer.toString("base64"));
+
+    // 2. Fetch cover art, genre, and duration from the free Music API
+    const metaData = await getTrackMetadata(title);
+
+    // 3. Save to MongoDB
     const music = new musicModel({
-        uri: result.url,
         title,
-        artist: req.user.id
+        uri: uploadResult.url,
+        artist: req.user.id,
+        coverArt: metaData?.coverArt || "https://via.placeholder.com/600?text=No+Cover",
+        duration: metaData?.duration || 0,
+        genre: genre || metaData?.genre || "Unknown",
     });
 
     await music.save();
 
-    res.status(201).json({
-        message: "Music created successfully",
-        music: {
-            id: music._id,
-            uri: music.uri,
-            title: music.title,
-            artist: music.artist,
-        }
+    return res.status(201).json({
+        message: "Music uploaded and created successfully",
+        music,
     });
 }
 
@@ -123,6 +135,56 @@ async function searchMusic(req, res) {
     });
 }
 
+
+
+async function toggleLikeMusic(req, res) {
+    const { musicId } = req.params;
+    const userId = req.user.id;
+
+    const music = await musicModel.findById(musicId);
+    if (!music) {
+        return res.status(404).json({ message: "Music not found" });
+    }
+
+    // Check if the user ID is already in the likes array
+    const alreadyLikedIndex = music.likes.indexOf(userId);
+
+    let isLiked = false;
+    if (alreadyLikedIndex > -1) {
+        // User already liked -> unlike it
+        music.likes.splice(alreadyLikedIndex, 1);
+        isLiked = false;
+    } else {
+        // Not liked yet -> add user ID
+        music.likes.push(userId);
+        isLiked = true;
+    }
+
+    await music.save();
+
+    return res.status(200).json({
+        message: isLiked ? "Added to Liked Songs" : "Removed from Liked Songs",
+        isLiked,
+        totalLikes: music.likes.length,
+    });
+}
+
+
+async function getLikedMusics(req, res) {
+    const userId = req.user.id;
+
+    // Find all songs where the likes array contains this user's ID
+    const musics = await musicModel
+        .find({ likes: userId })
+        .populate("artist", "username email");
+
+    return res.status(200).json({
+        message: "Liked songs fetched successfully",
+        total: musics.length,
+        musics,
+    });
+}
+
 module.exports = {
     createMusic,
     createAlbum,
@@ -131,4 +193,7 @@ module.exports = {
     getAlbumById,
     logoutUser,
     searchMusic,
+    toggleLikeMusic,
+    getLikedMusics,
+
 };
