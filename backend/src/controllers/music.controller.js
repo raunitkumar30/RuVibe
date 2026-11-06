@@ -1,7 +1,7 @@
 const musicModel = require("../models/music.model")
 const albumModel = require("../models/album.model");
 const { uploadFile } = require("../services/storage.service");
-const { getTrackMetadata } = require("../services/musicApi.service");
+const { getTrackMetadata, searchGlobalTracks } = require("../services/musicApi.service");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
@@ -118,57 +118,96 @@ async function searchMusic(req, res) {
         return res.status(400).json({ message: "Search query 'q' parameter is required" });
     }
 
-    const musics = await musicModel
-        .find({
-            $or: [
-                { title: { $regex: q, $options: "i" } },
-                { genre: { $regex: q, $options: "i" } },
-            ],
-        })
-        .populate("artist", "username email role")
-        .limit(20);
+    try {
+        // 1. Search local MongoDB
+        const localMusics = await musicModel
+            .find({
+                $or: [
+                    { title: { $regex: q, $options: "i" } },
+                    { genre: { $regex: q, $options: "i" } },
+                ],
+            })
+            .populate("artist", "username email role")
+            .limit(10);
 
-    return res.status(200).json({
-        message: "Search completed successfully",
-        totalResults: musics.length,
-        musics,
-    });
+        // 2. Search Global Music Catalog API
+        const globalMusics = await searchGlobalTracks(q, 15);
+
+        // 3. Combine: Local MongoDB songs first, then Global catalog songs
+        const allMusics = [...localMusics, ...globalMusics];
+
+        return res.status(200).json({
+            message: "Search completed successfully",
+            totalResults: allMusics.length,
+            musics: allMusics,
+        });
+    } catch (error) {
+        console.error("Search error:", error);
+        return res.status(500).json({ message: "Error searching music" });
+    }
 }
 
 
 
+// Toggle like/unlike on any song (supports both uploaded & global search songs)
 async function toggleLikeMusic(req, res) {
     const { musicId } = req.params;
+    const { title, uri, coverArt, duration, genre, artist } = req.body;
     const userId = req.user.id;
 
-    const music = await musicModel.findById(musicId);
-    if (!music) {
-        return res.status(404).json({ message: "Music not found" });
+    try {
+        let music = null;
+
+        // 1. If it's a valid MongoDB ObjectId, find it
+        if (musicId && musicId.length === 24 && !musicId.startsWith("global_")) {
+            music = await musicModel.findById(musicId);
+        }
+
+        // 2. If it's a song from Search or not yet in DB, find by audio uri or create it
+        if (!music && uri) {
+            music = await musicModel.findOne({ uri });
+            if (!music) {
+                music = new musicModel({
+                    title: title || "Unknown Title",
+                    uri: uri,
+                    artist: userId,
+                    coverArt: coverArt || "https://via.placeholder.com/600",
+                    duration: duration || 0,
+                    genre: genre || "Pop",
+                    likes: [],
+                });
+            }
+        }
+
+        if (!music) {
+            return res.status(404).json({ message: "Song could not be found or saved" });
+        }
+
+        // 3. Toggle like
+        const alreadyLikedIndex = music.likes.indexOf(userId);
+        let isLiked = false;
+
+        if (alreadyLikedIndex > -1) {
+            music.likes.splice(alreadyLikedIndex, 1);
+            isLiked = false;
+        } else {
+            music.likes.push(userId);
+            isLiked = true;
+        }
+
+        await music.save();
+
+        return res.status(200).json({
+            message: isLiked ? "Added to Liked Songs" : "Removed from Liked Songs",
+            isLiked,
+            musicId: music._id,
+            totalLikes: music.likes.length,
+        });
+    } catch (error) {
+        console.error("Toggle like error:", error);
+        return res.status(500).json({ message: "Error updating favorite" });
     }
-
-    // Check if the user ID is already in the likes array
-    const alreadyLikedIndex = music.likes.indexOf(userId);
-
-    let isLiked = false;
-    if (alreadyLikedIndex > -1) {
-        // User already liked -> unlike it
-        music.likes.splice(alreadyLikedIndex, 1);
-        isLiked = false;
-    } else {
-        // Not liked yet -> add user ID
-        music.likes.push(userId);
-        isLiked = true;
-    }
-
-    await music.save();
-
-    return res.status(200).json({
-        message: isLiked ? "Added to Liked Songs" : "Removed from Liked Songs",
-        isLiked,
-        totalLikes: music.likes.length,
-    });
 }
-
 
 async function getLikedMusics(req, res) {
     const userId = req.user.id;

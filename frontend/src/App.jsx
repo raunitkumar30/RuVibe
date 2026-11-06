@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "./api/axios";
 import { usePlayerStore } from "./store/usePlayerStore";
+import { useAuthStore } from "./store/useAuthStore";
+import { useFavoritesStore } from "./store/useFavoritesStore";
 
-// Import our 6 atomic components
+// Components
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import HeroBanner from "./components/HeroBanner";
@@ -10,9 +12,15 @@ import TopArtists from "./components/TopArtists";
 import GenresGrid from "./components/GenresGrid";
 import TopCharts from "./components/TopCharts";
 import RightPlayer from "./components/RightPlayer";
+import AuthModal from "./components/AuthModal";
+import FavoritesView from "./components/FavoritesView";
 
 export default function App() {
   const audioRef = useRef(null);
+  const [currentView, setCurrentView] = useState("explore"); // "explore" or "favourites"
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [tracks, setTracks] = useState([]);
+
   const {
     currentTrack,
     isPlaying,
@@ -21,24 +29,37 @@ export default function App() {
     togglePlay,
   } = usePlayerStore();
 
-  const [tracks, setTracks] = useState([]);
+  const { isAuthenticated, checkAuth } = useAuthStore();
+  const { fetchLikedSongs } = useFavoritesStore();
 
-  // 1. Fetch songs from backend on mount
+  // 1. Check existing session ONCE on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  // 2. Fetch tracks when authenticated or on mount
   useEffect(() => {
     async function fetchTracks() {
       try {
         const response = await api.get("/music");
-        if (response.data?.musics) {
+        if (response.data?.musics && response.data.musics.length > 0) {
           setTracks(response.data.musics);
         }
-      } catch (error) {
-        console.log("No backend songs or unauthorized yet, using demo tracks.");
+      } catch {
+        console.log("Using demo tracks until user logs in or uploads songs.");
       }
     }
     fetchTracks();
-  }, []);
+  }, [isAuthenticated]);
 
-  // 2. Handle audio play/pause when Zustand state changes
+  // 3. Fetch user's liked songs whenever authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchLikedSongs();
+    }
+  }, [isAuthenticated]);
+
+  // 4. Audio synchronization with Zustand store
   useEffect(() => {
     if (!audioRef.current) return;
 
@@ -57,7 +78,6 @@ export default function App() {
     }
   }, [currentTrack, isPlaying]);
 
-  // 3. Audio element event handlers
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime);
@@ -77,25 +97,6 @@ export default function App() {
     }
   };
 
-  // 4. Search Handler (Queries backend /api/music/search)
-  const handleSearch = async (query) => {
-    if (!query.trim()) {
-      // Re-fetch all if empty
-      const res = await api.get("/music").catch(() => null);
-      if (res?.data?.musics) setTracks(res.data.musics);
-      return;
-    }
-
-    try {
-      const res = await api.get(`/music/search?q=${encodeURIComponent(query)}`);
-      if (res.data?.musics) {
-        setTracks(res.data.musics);
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-    }
-  };
-
   return (
     <div className="flex h-screen w-screen bg-[#11121a] text-white overflow-hidden select-none">
       {/* Hidden Native Audio Element */}
@@ -106,27 +107,32 @@ export default function App() {
         onEnded={() => togglePlay()}
       />
 
-      {/* COLUMN 1: Left Sidebar */}
-      <Sidebar />
+      {/* Auth Modal Popup */}
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
+      {/* COLUMN 1: Left Sidebar (with navigation switching) */}
+      <Sidebar currentView={currentView} onSelectView={setCurrentView} />
 
       {/* COLUMN 2: Center Scrollable Dashboard */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Top Navbar */}
-        <Navbar onSearch={handleSearch} />
+        <Navbar onOpenAuth={() => setIsAuthOpen(true)} />
 
-        {/* Scrollable Feed */}
         <main className="flex-1 overflow-y-auto px-8 pb-10 space-y-7 scrollbar-thin scrollbar-thumb-white/10">
-          {/* Hero "Trending New Hits" Banner */}
-          <HeroBanner featuredTrack={tracks[0]} />
+          {currentView === "favourites" ? (
+            /* View A: Liked Songs Screen */
+            <FavoritesView />
+          ) : (
+            /* View B: Home Dashboard */
+            <>
+              <HeroBanner featuredTrack={tracks[0]} />
+              <TopArtists />
 
-          {/* Top Artists Row */}
-          <TopArtists />
-
-          {/* Bottom Dual Grid: Genres + Top Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            <GenresGrid />
-            <TopCharts tracks={tracks} />
-          </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <GenresGrid />
+                <TopCharts tracks={tracks} />
+              </div>
+            </>
+          )}
         </main>
       </div>
 

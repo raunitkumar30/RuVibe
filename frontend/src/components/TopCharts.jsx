@@ -1,57 +1,62 @@
 import React from "react";
 import { Play, Pause, Heart, MoreHorizontal } from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
+import { useFavoritesStore } from "../store/useFavoritesStore";
 
 export default function TopCharts({ tracks }) {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
+  const { toggleLike, isLiked } = useFavoritesStore(); // ✅ Added this missing line!
 
-  // Fallback sample data matching the mockup
-  const chartTracks = tracks && tracks.length > 0 ? tracks : [
-    {
-      _id: "1",
-      rank: "01",
-      title: "Havana",
-      artist: "Camila Cabello",
-      duration: 225, // 3:45
-      durationFormatted: "3:45",
-      coverArt:
-        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&auto=format&fit=crop&q=80",
-      uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-    },
-    {
-      _id: "2",
-      rank: "02",
-      title: "Jesus Is King",
-      artist: "Kanye West",
-      duration: 225,
-      durationFormatted: "3:45",
-      coverArt:
-        "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&auto=format&fit=crop&q=80",
-      uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-    },
-    {
-      _id: "3",
-      rank: "03",
-      title: "Closer",
-      artist: "The Chainsmokers",
-      duration: 225,
-      durationFormatted: "3:45",
-      coverArt:
-        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&auto=format&fit=crop&q=80",
-      uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-    },
-    {
-      _id: "4",
-      rank: "04",
-      title: "Lean On",
-      artist: "Major Lazer ft DJ Snake",
-      duration: 225,
-      durationFormatted: "3:45",
-      coverArt:
-        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80",
-      uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-    },
-  ];
+  // Fallback sample data if no songs are in database
+  const chartTracks =
+    tracks && tracks.length > 0
+      ? tracks
+      : [
+          {
+            _id: "demo_1",
+            rank: "01",
+            title: "Havana",
+            artist: "Camila Cabello",
+            duration: 225,
+            durationFormatted: "3:45",
+            coverArt:
+              "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&auto=format&fit=crop&q=80",
+            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+          },
+          {
+            _id: "demo_2",
+            rank: "02",
+            title: "Jesus Is King",
+            artist: "Kanye West",
+            duration: 225,
+            durationFormatted: "3:45",
+            coverArt:
+              "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&auto=format&fit=crop&q=80",
+            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+          },
+          {
+            _id: "demo_3",
+            rank: "03",
+            title: "Closer",
+            artist: "The Chainsmokers",
+            duration: 225,
+            durationFormatted: "3:45",
+            coverArt:
+              "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&auto=format&fit=crop&q=80",
+            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+          },
+          {
+            _id: "demo_4",
+            rank: "04",
+            title: "Lean On",
+            artist: "Major Lazer ft DJ Snake",
+            duration: 225,
+            durationFormatted: "3:45",
+            coverArt:
+              "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80",
+            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+          },
+        ];
 
   const handleRowClick = (track) => {
     if (currentTrack?._id === track._id) {
@@ -68,7 +73,7 @@ export default function TopCharts({ tracks }) {
         <h2 className="text-base font-bold text-white tracking-wide">
           Top Charts
         </h2>
-        <button className="text-xs text-gray-400 hover:text-white font-medium transition-colors">
+        <button className="text-xs text-gray-400 hover:text-white font-medium transition-colors cursor-pointer">
           See all
         </button>
       </div>
@@ -78,6 +83,13 @@ export default function TopCharts({ tracks }) {
         {chartTracks.map((track, index) => {
           const isThisTrackPlaying =
             currentTrack?._id === track._id && isPlaying;
+
+          const artistName =
+            typeof track.artist === "object"
+              ? track.artist?.username || "Artist"
+              : track.artist || "Artist";
+
+          const trackIsLiked = isLiked ? isLiked(track._id) : false;
 
           return (
             <div
@@ -91,9 +103,9 @@ export default function TopCharts({ tracks }) {
                   {track.rank || `0${index + 1}`}
                 </span>
 
-                <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm">
+                <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm bg-black/40">
                   <img
-                    src={track.coverArt}
+                    src={track.coverArt || "https://via.placeholder.com/100"}
                     alt={track.title}
                     className="w-full h-full object-cover"
                   />
@@ -124,9 +136,7 @@ export default function TopCharts({ tracks }) {
                     {track.title}
                   </p>
                   <p className="text-[11px] text-gray-400 truncate">
-                    {typeof track.artist === "object"
-                      ? track.artist?.username
-                      : track.artist}
+                    {artistName}
                   </p>
                 </div>
               </div>
@@ -142,20 +152,34 @@ export default function TopCharts({ tracks }) {
                       : "3:45")}
                 </span>
 
+                {/* Heart / Favorite Button */}
                 <button
+                  type="button"
                   onClick={(e) => {
-                    e.stopPropagation(); // Don't trigger play when clicking heart
+                    e.stopPropagation();
+                    if (toggleLike) toggleLike(track);
                   }}
-                  className="text-gray-500 hover:text-red-500 transition-colors"
+                  className={`transition-all active:scale-125 cursor-pointer p-1 ${
+                    trackIsLiked
+                      ? "text-red-500"
+                      : "text-gray-500 hover:text-red-400"
+                  }`}
+                  title={
+                    trackIsLiked ? "Remove from Favorites" : "Add to Favorites"
+                  }
                 >
-                  <Heart size={14} />
+                  <Heart
+                    size={15}
+                    fill={trackIsLiked ? "currentColor" : "none"}
+                  />
                 </button>
 
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
-                  className="text-gray-500 hover:text-white transition-colors"
+                  className="text-gray-500 hover:text-white transition-colors cursor-pointer"
                 >
                   <MoreHorizontal size={14} />
                 </button>
