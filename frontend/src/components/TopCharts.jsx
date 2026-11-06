@@ -3,7 +3,7 @@ import { Play, Pause, Heart, MoreHorizontal } from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useFavoritesStore } from "../store/useFavoritesStore";
 
-export default function TopCharts({ tracks }) {
+export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { toggleLike, isLiked } = useFavoritesStore(); // ✅ Added this missing line!
 
@@ -12,60 +12,59 @@ export default function TopCharts({ tracks }) {
     tracks && tracks.length > 0
       ? tracks
       : [
-          {
-            _id: "demo_1",
-            rank: "01",
-            title: "Havana",
-            artist: "Camila Cabello",
-            duration: 225,
-            durationFormatted: "3:45",
-            coverArt:
-              "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&auto=format&fit=crop&q=80",
-            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-          },
-          {
-            _id: "demo_2",
-            rank: "02",
-            title: "Jesus Is King",
-            artist: "Kanye West",
-            duration: 225,
-            durationFormatted: "3:45",
-            coverArt:
-              "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&auto=format&fit=crop&q=80",
-            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-          },
-          {
-            _id: "demo_3",
-            rank: "03",
-            title: "Closer",
-            artist: "The Chainsmokers",
-            duration: 225,
-            durationFormatted: "3:45",
-            coverArt:
-              "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&auto=format&fit=crop&q=80",
-            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-          },
-          {
-            _id: "demo_4",
-            rank: "04",
-            title: "Lean On",
-            artist: "Major Lazer ft DJ Snake",
-            duration: 225,
-            durationFormatted: "3:45",
-            coverArt:
-              "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80",
-            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-          },
-        ];
+        {
+          _id: "demo_1",
+          rank: "01",
+          title: "Havana",
+          artist: "Camila Cabello",
+          duration: 225,
+          durationFormatted: "3:45",
+          coverArt:
+            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&auto=format&fit=crop&q=80",
+          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+        },
+        {
+          _id: "demo_2",
+          rank: "02",
+          title: "Jesus Is King",
+          artist: "Kanye West",
+          duration: 225,
+          durationFormatted: "3:45",
+          coverArt:
+            "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200&auto=format&fit=crop&q=80",
+          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+        },
+        {
+          _id: "demo_3",
+          rank: "03",
+          title: "Closer",
+          artist: "The Chainsmokers",
+          duration: 225,
+          durationFormatted: "3:45",
+          coverArt:
+            "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&auto=format&fit=crop&q=80",
+          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+        },
+        {
+          _id: "demo_4",
+          rank: "04",
+          title: "Lean On",
+          artist: "Major Lazer ft DJ Snake",
+          duration: 225,
+          durationFormatted: "3:45",
+          coverArt:
+            "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80",
+          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
+        },
+      ];
 
   const handleRowClick = (track) => {
     if (currentTrack?._id === track._id) {
       togglePlay();
     } else {
-      playTrack(track);
+      playTrack(track, chartTracks);
     }
   };
-
   return (
     <div className="select-none">
       {/* Header */}
@@ -111,11 +110,10 @@ export default function TopCharts({ tracks }) {
                   />
                   {/* Hover Play/Pause Overlay */}
                   <div
-                    className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
-                      isThisTrackPlaying
-                        ? "opacity-100"
-                        : "opacity-0 group-hover:opacity-100"
-                    }`}
+                    className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isThisTrackPlaying
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100"
+                      }`}
                   >
                     {isThisTrackPlaying ? (
                       <Pause size={14} className="text-white" fill="white" />
@@ -127,11 +125,10 @@ export default function TopCharts({ tracks }) {
 
                 <div className="min-w-0">
                   <p
-                    className={`text-xs font-semibold truncate ${
-                      currentTrack?._id === track._id
-                        ? "text-blue-500"
-                        : "text-white"
-                    }`}
+                    className={`text-xs font-semibold truncate ${currentTrack?._id === track._id
+                      ? "text-blue-500"
+                      : "text-white"
+                      }`}
                   >
                     {track.title}
                   </p>
@@ -147,8 +144,8 @@ export default function TopCharts({ tracks }) {
                   {track.durationFormatted ||
                     (track.duration
                       ? `${Math.floor(track.duration / 60)}:${String(
-                          track.duration % 60
-                        ).padStart(2, "0")}`
+                        track.duration % 60
+                      ).padStart(2, "0")}`
                       : "3:45")}
                 </span>
 
@@ -159,11 +156,10 @@ export default function TopCharts({ tracks }) {
                     e.stopPropagation();
                     if (toggleLike) toggleLike(track);
                   }}
-                  className={`transition-all active:scale-125 cursor-pointer p-1 ${
-                    trackIsLiked
-                      ? "text-red-500"
-                      : "text-gray-500 hover:text-red-400"
-                  }`}
+                  className={`transition-all active:scale-125 cursor-pointer p-1 ${trackIsLiked
+                    ? "text-red-500"
+                    : "text-gray-500 hover:text-red-400"
+                    }`}
                   title={
                     trackIsLiked ? "Remove from Favorites" : "Add to Favorites"
                   }
@@ -178,8 +174,10 @@ export default function TopCharts({ tracks }) {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (onOpenAddToPlaylist) onOpenAddToPlaylist(track);
                   }}
-                  className="text-gray-500 hover:text-white transition-colors cursor-pointer"
+                  className="text-gray-500 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10"
+                  title="Add to Playlist"
                 >
                   <MoreHorizontal size={14} />
                 </button>

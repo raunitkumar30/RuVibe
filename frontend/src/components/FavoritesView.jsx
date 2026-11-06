@@ -11,13 +11,13 @@ export default function FavoritesView() {
     if (currentTrack?._id === song._id) {
       togglePlay();
     } else {
-      playTrack(song);
+      playTrack(song,likedSongs);
     }
   };
 
   const handlePlayAll = () => {
     if (likedSongs.length > 0) {
-      playTrack(likedSongs[0]);
+      playTrack(likedSongs[0],likedSongs);
     }
   };
 

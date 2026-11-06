@@ -8,12 +8,13 @@ import {
   Play,
   X,
   Loader2,
+  Upload,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { usePlayerStore } from "../store/usePlayerStore";
 
-export default function Navbar({ onOpenAuth }) {
+export default function Navbar({ onOpenAuth, onOpenUpload }) {
   const [activeTab, setActiveTab] = useState("MUSIC");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -49,7 +50,7 @@ export default function Navbar({ onOpenAuth }) {
       } finally {
         setIsSearching(false);
       }
-    }, 300); // 300ms debounce
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -69,7 +70,7 @@ export default function Navbar({ onOpenAuth }) {
   }, []);
 
   const handleSelectTrack = (track) => {
-    playTrack(track);
+    playTrack(track, searchResults);
     setShowDropdown(false);
   };
 
@@ -129,7 +130,7 @@ export default function Navbar({ onOpenAuth }) {
           ) : null}
         </div>
 
-        {/* 🌟 FLOATING SEARCH RESULTS DROPDOWN 🌟 */}
+        {/* Floating Search Dropdown */}
         {showDropdown && searchTerm.trim() && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-[#181a24]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-2 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
             {isSearching ? (
@@ -156,10 +157,11 @@ export default function Navbar({ onOpenAuth }) {
                       className="group flex items-center justify-between p-2 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        {/* Cover thumbnail */}
                         <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-sm bg-black/40">
                           <img
-                            src={track.coverArt || "https://via.placeholder.com/100"}
+                            src={
+                              track.coverArt || "https://via.placeholder.com/100"
+                            }
                             alt={track.title}
                             className="w-full h-full object-cover"
                           />
@@ -168,7 +170,6 @@ export default function Navbar({ onOpenAuth }) {
                           </div>
                         </div>
 
-                        {/* Title and Artist */}
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
                             {track.title}
@@ -179,7 +180,6 @@ export default function Navbar({ onOpenAuth }) {
                         </div>
                       </div>
 
-                      {/* Tag & Duration */}
                       <div className="flex items-center gap-2 shrink-0">
                         {track.isExternal ? (
                           <span className="text-[9px] bg-blue-500/20 text-blue-300 font-semibold px-2 py-0.5 rounded-full border border-blue-500/30">
@@ -214,6 +214,18 @@ export default function Navbar({ onOpenAuth }) {
 
       {/* 3. User & Quick Actions */}
       <div className="flex items-center gap-4">
+        {/* Upload Track Button (Only visible to Artists!) */}
+        {isAuthenticated && user?.role === "artist" && (
+          <button
+            onClick={onOpenUpload}
+            className="flex items-center gap-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 text-xs font-semibold px-3.5 py-2 rounded-full transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Upload new track"
+          >
+            <Upload size={14} />
+            <span>Upload Track</span>
+          </button>
+        )}
+
         <button className="text-gray-400 hover:text-white transition-colors cursor-pointer">
           <Bell size={18} />
         </button>

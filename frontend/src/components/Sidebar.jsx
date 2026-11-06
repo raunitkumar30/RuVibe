@@ -15,7 +15,7 @@ import {
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
 
-export default function Sidebar({ currentView, onSelectView }) {
+export default function Sidebar({ currentView, onSelectView, onSelectPlaylist }) {
   const [playlists, setPlaylists] = useState([]);
   const { isAuthenticated } = useAuthStore();
 
@@ -38,19 +38,31 @@ export default function Sidebar({ currentView, onSelectView }) {
   useEffect(() => {
     async function fetchPlaylists() {
       if (!isAuthenticated) {
-        setPlaylists(["Design Flow", "Best of 2020", "Nigeria Jams"]);
+        setPlaylists([
+          { _id: "demo_1", name: "Design Flow" },
+          { _id: "demo_2", name: "Best of 2020" },
+          { _id: "demo_3", name: "Nigeria Jams" },
+        ]);
         return;
       }
       try {
         const res = await api.get("/playlists");
         const list = res.data?.playlists || [];
         if (list.length > 0) {
-          setPlaylists(list.map((p) => p.name));
+          setPlaylists(list);
         } else {
-          setPlaylists(["Design Flow", "Best of 2020", "Nigeria Jams"]);
+          setPlaylists([
+            { _id: "demo_1", name: "Design Flow" },
+            { _id: "demo_2", name: "Best of 2020" },
+            { _id: "demo_3", name: "Nigeria Jams" },
+          ]);
         }
       } catch {
-        setPlaylists(["Design Flow", "Best of 2020", "Nigeria Jams"]);
+        setPlaylists([
+          { _id: "demo_1", name: "Design Flow" },
+          { _id: "demo_2", name: "Best of 2020" },
+          { _id: "demo_3", name: "Nigeria Jams" },
+        ]);
       }
     }
     fetchPlaylists();
@@ -62,18 +74,18 @@ export default function Sidebar({ currentView, onSelectView }) {
     if (!name || !name.trim()) return;
 
     if (!isAuthenticated) {
-      setPlaylists((prev) => [name.trim(), ...prev]);
+      setPlaylists((prev) => [{ _id: `local_${Date.now()}`, name: name.trim() }, ...prev]);
       return;
     }
 
     try {
       const res = await api.post("/playlists", { name: name.trim() });
       if (res.data?.playlist) {
-        setPlaylists((prev) => [res.data.playlist.name, ...prev]);
+        setPlaylists((prev) => [res.data.playlist, ...prev]);
       }
     } catch (err) {
       console.error("Create playlist error:", err);
-      setPlaylists((prev) => [name.trim(), ...prev]);
+      setPlaylists((prev) => [{ _id: `local_${Date.now()}`, name: name.trim() }, ...prev]);
     }
   };
 
@@ -161,15 +173,22 @@ export default function Sidebar({ currentView, onSelectView }) {
             <PlusSquare size={18} className="text-blue-500" />
             <span>Create New</span>
           </button>
+
           <div className="space-y-1">
-            {playlists.map((playlist, idx) => (
-              <button
-                key={idx}
-                className="w-full text-left px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all truncate cursor-pointer"
-              >
-                {playlist}
-              </button>
-            ))}
+            {playlists.map((playlist, idx) => {
+              const playlistName = typeof playlist === "string" ? playlist : playlist.name;
+              return (
+                <button
+                  key={playlist._id || idx}
+                  onClick={() => {
+                    if (onSelectPlaylist) onSelectPlaylist(playlist);
+                  }}
+                  className="w-full text-left px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all truncate cursor-pointer"
+                >
+                  {playlistName}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
