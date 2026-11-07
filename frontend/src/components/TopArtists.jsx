@@ -3,40 +3,40 @@ import React from "react";
 export default function TopArtists({ onSelectArtist }) {
   const artists = [
     {
+      name: "The Weeknd",
+      plays: "114M Plays",
+      avatar:
+        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80",
+    },
+    {
       name: "Travis Scott",
-      plays: "44M Plays",
+      plays: "68M Plays",
       avatar:
         "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80",
     },
     {
       name: "Billie Eilish",
-      plays: "203M Plays",
+      plays: "99M Plays",
       avatar:
         "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
     },
     {
-      name: "The Kid LAROI",
-      plays: "63M Plays",
+      name: "Drake",
+      plays: "84M Plays",
       avatar:
         "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80",
     },
     {
-      name: "Kanye West",
-      plays: "15M Plays",
-      avatar:
-        "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Nicki Minaj",
-      plays: "100M Plays",
+      name: "Dua Lipa",
+      plays: "77M Plays",
       avatar:
         "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80",
     },
     {
-      name: "The Weeknd",
-      plays: "120M Plays",
+      name: "Kanye West",
+      plays: "62M Plays",
       avatar:
-        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300&auto=format&fit=crop&q=80",
     },
   ];
 
@@ -59,7 +59,7 @@ export default function TopArtists({ onSelectArtist }) {
             key={artist.name}
             onClick={() => onSelectArtist && onSelectArtist(artist.name)}
             className="bg-[#181a24] hover:bg-[#202230] p-3 rounded-2xl flex flex-col items-center text-center border border-white/5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl group active:scale-95"
-            title={`Listen to ${artist.name}`}
+            title={`View ${artist.name}`}
           >
             {/* Artist Photo */}
             <div className="w-16 h-16 rounded-xl overflow-hidden mb-2.5 shadow-md">

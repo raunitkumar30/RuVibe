@@ -18,12 +18,15 @@ import FavoritesView from "./components/FavoritesView";
 import UploadModal from "./components/UploadModal";
 import PlaylistView from "./components/PlaylistView";
 import AddToPlaylistModal from "./components/AddToPlaylistModal";
+import AlbumsView from "./components/AlbumsView";
+import ArtistsView from "./components/ArtistsView";
 
 export default function App() {
   const audioRef = useRef(null);
   const [currentView, setCurrentView] = useState("explore");
   const [selectedPlaylist, setSelectedPlaylist] = useState(null); // Active playlist
-  const [playlistTrackToAdd, setPlaylistTrackToAdd] = useState(null); // Track opened in Add-To-Playlist modal
+  const [selectedArtist, setSelectedArtist] = useState(null); // Active artist
+  const [playlistTrackToAdd, setPlaylistTrackToAdd] = useState(null); // Track for Add-to-Playlist modal
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false); // Controls Upload Modal
   const [tracks, setTracks] = useState([]);
@@ -81,7 +84,7 @@ export default function App() {
     }
   }, [volume, isMuted]);
 
-  // 5. Filter by Artist or Genre & update queue
+  // 5. Filter by Genre or Keyword
   const handleFilterMusic = async (filterKeyword) => {
     if (!filterKeyword) return;
     setActiveFilter(filterKeyword);
@@ -169,7 +172,10 @@ export default function App() {
       {/* COLUMN 1: Left Sidebar */}
       <Sidebar
         currentView={currentView}
-        onSelectView={setCurrentView}
+        onSelectView={(view) => {
+          if (view === "artists") setSelectedArtist(null);
+          setCurrentView(view);
+        }}
         onSelectPlaylist={(playlist) => {
           setSelectedPlaylist(playlist);
           setCurrentView("playlist");
@@ -193,8 +199,19 @@ export default function App() {
               playlistId={selectedPlaylist?._id}
               playlistName={selectedPlaylist?.name}
             />
+          ) : currentView === "albums" ? (
+            /* View C: Albums Screen */
+            <AlbumsView
+              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+            />
+          ) : currentView === "artists" ? (
+            /* View D: Artists Screen */
+            <ArtistsView
+              initialArtist={selectedArtist}
+              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+            />
           ) : (
-            /* View C: Home Dashboard */
+            /* View E: Home Dashboard */
             <>
               {/* Active Filter Pill */}
               {activeFilter && (
@@ -215,8 +232,13 @@ export default function App() {
 
               <HeroBanner featuredTrack={tracks[0]} />
 
-              {/* Interactive Top Artists */}
-              <TopArtists onSelectArtist={handleFilterMusic} />
+              {/* Interactive Top Artists (Takes you directly to their profile) */}
+              <TopArtists
+                onSelectArtist={(artistName) => {
+                  setSelectedArtist(artistName);
+                  setCurrentView("artists");
+                }}
+              />
 
               {/* Interactive Genres & Top Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
