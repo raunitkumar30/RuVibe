@@ -22,7 +22,7 @@ import AddToPlaylistModal from "./components/AddToPlaylistModal";
 export default function App() {
   const audioRef = useRef(null);
   const [currentView, setCurrentView] = useState("explore");
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null); // Active selected playlist
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null); // Active playlist
   const [playlistTrackToAdd, setPlaylistTrackToAdd] = useState(null); // Track opened in Add-To-Playlist modal
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false); // Controls Upload Modal
@@ -32,6 +32,8 @@ export default function App() {
   const {
     currentTrack,
     isPlaying,
+    volume,
+    isMuted,
     setCurrentTime,
     setDuration,
     togglePlay,
@@ -72,7 +74,14 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
-  // 4. Filter by Artist or Genre & update queue
+  // 4. Volume Synchronization
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+    }
+  }, [volume, isMuted]);
+
+  // 5. Filter by Artist or Genre & update queue
   const handleFilterMusic = async (filterKeyword) => {
     if (!filterKeyword) return;
     setActiveFilter(filterKeyword);
@@ -89,7 +98,7 @@ export default function App() {
     }
   };
 
-  // 5. Audio synchronization with HTML5 Audio element
+  // 6. Audio synchronization with HTML5 Audio element
   useEffect(() => {
     if (!audioRef.current) return;
 

@@ -6,12 +6,14 @@ export const usePlayerStore = create((set, get) => ({
   isPlaying: false,       // Play / Pause state
   currentTime: 0,         // Current timestamp in seconds
   duration: 0,            // Total duration in seconds
-  queue: [],              // Full list of tracks in the current view
+  volume: 0.8,            // Default volume: 80% (0.0 to 1.0)
+  isMuted: false,         // Mute toggle
+  queue: [],              // Full list of tracks in current view
   currentIndex: 0,        // Position in queue
   isShuffle: false,       // Shuffle active?
   isRepeat: false,        // Repeat active?
 
-  // 1. Play specific track & load the playlist queue
+  // 1. Play specific track & load playlist queue
   playTrack: (track, trackList = null) => {
     let currentQueue = get().queue;
     if (trackList && trackList.length > 0) {
@@ -41,7 +43,6 @@ export const usePlayerStore = create((set, get) => ({
     if (!queue || queue.length === 0) return;
 
     if (isRepeat && currentTrack) {
-      // Repeat same song
       set({ currentTime: 0, isPlaying: true });
       return;
     }
@@ -50,7 +51,7 @@ export const usePlayerStore = create((set, get) => ({
     if (isShuffle) {
       nextIndex = Math.floor(Math.random() * queue.length);
     } else {
-      nextIndex = (currentIndex + 1) % queue.length; // Loop back to start
+      nextIndex = (currentIndex + 1) % queue.length;
     }
 
     const nextTrack = queue[nextIndex];
@@ -70,7 +71,6 @@ export const usePlayerStore = create((set, get) => ({
     const { queue, currentIndex, currentTime } = get();
     if (!queue || queue.length === 0) return;
 
-    // If song played for > 3s, restart from 0:00 like Spotify does!
     if (currentTime > 3) {
       set({ currentTime: 0 });
       return;
@@ -96,6 +96,16 @@ export const usePlayerStore = create((set, get) => ({
 
   toggleRepeat: () => {
     set((state) => ({ isRepeat: !state.isRepeat }));
+  },
+
+  // 6. Volume Controls
+  setVolume: (val) => {
+    const clamped = Math.max(0, Math.min(1, val));
+    set({ volume: clamped, isMuted: clamped === 0 });
+  },
+
+  toggleMute: () => {
+    set((state) => ({ isMuted: !state.isMuted }));
   },
 
   setCurrentTime: (time) => {

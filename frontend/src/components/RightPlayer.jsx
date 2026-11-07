@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Play,
   Pause,
@@ -7,7 +7,13 @@ import {
   Shuffle,
   Repeat,
   ChevronUp,
+  ChevronDown,
   ListMusic,
+  Volume2,
+  Volume1,
+  VolumeX,
+  X,
+  Music,
 } from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
 
@@ -24,7 +30,18 @@ export default function RightPlayer({ onSeek }) {
     toggleRepeat,
     currentTime,
     duration,
+    volume,
+    isMuted,
+    setVolume,
+    toggleMute,
+    queue,
+    playTrack,
   } = usePlayerStore();
+
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
+  const [lyrics, setLyrics] = useState("");
+  const [loadingLyrics, setLoadingLyrics] = useState(false);
 
   // Fallback track if nothing has been selected yet
   const track = currentTrack || {
@@ -35,6 +52,51 @@ export default function RightPlayer({ onSeek }) {
       "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
     duration: 227,
   };
+
+  const artistName =
+    typeof track.artist === "object"
+      ? track.artist?.username || "Artist"
+      : track.artist || "Artist";
+
+  // Fetch free lyrics on track change or drawer open
+  useEffect(() => {
+    if (!showLyrics || !track?.title) return;
+
+    let isMounted = true;
+    async function fetchLyrics() {
+      setLoadingLyrics(true);
+      try {
+        const cleanArtist = encodeURIComponent(artistName);
+        const cleanTitle = encodeURIComponent(track.title);
+        const res = await fetch(
+          `https://api.lyrics.ovh/v1/${cleanArtist}/${cleanTitle}`
+        );
+        const data = await res.json();
+        if (isMounted) {
+          if (data?.lyrics) {
+            setLyrics(data.lyrics);
+          } else {
+            setLyrics(
+              `♪ Listening to "${track.title}" by ${artistName} ♪\n\n(Official lyrics not currently indexed for this track.\nEnjoy the rhythm!)`
+            );
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setLyrics(
+            `♪ Now Playing: ${track.title} ♪\n\nSing along and enjoy the vibe!`
+          );
+        }
+      } finally {
+        if (isMounted) setLoadingLyrics(false);
+      }
+    }
+
+    fetchLyrics();
+    return () => {
+      isMounted = false;
+    };
+  }, [showLyrics, track?.title, artistName]);
 
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return "0:00";
@@ -51,43 +113,55 @@ export default function RightPlayer({ onSeek }) {
     if (onSeek) onSeek(newTime);
   };
 
+  // Determine which volume icon to show
+  const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+
   return (
-    <aside className="w-80 h-screen bg-[#14151f] border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0">
-      {/* 1. Header */}
+    <aside className="relative w-80 h-screen bg-[#14151f] border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0">
+      {/* 1. Top Header */}
       <div>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-bold text-white tracking-wider">Player</h2>
-          <button className="text-gray-400 hover:text-white transition-colors cursor-pointer">
+          <button
+            onClick={() => {
+              setShowQueue((prev) => !prev);
+              setShowLyrics(false);
+            }}
+            title="Queue"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              showQueue
+                ? "text-blue-500 bg-blue-500/10"
+                : "text-gray-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
             <ListMusic size={18} />
           </button>
         </div>
 
         {/* 2. Large Album Art Card */}
-        <div className="w-full aspect-square rounded-3xl overflow-hidden shadow-2xl mb-6 bg-[#181a24] border border-white/5">
+        <div className="w-full aspect-square rounded-3xl overflow-hidden shadow-2xl mb-5 bg-[#181a24] border border-white/5 group relative">
           <img
             src={track.coverArt || "https://via.placeholder.com/600"}
             alt={track.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
 
         {/* 3. Track Info */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <h3 className="text-lg font-extrabold text-white tracking-tight truncate">
             {track.title}
           </h3>
           <p className="text-xs font-semibold text-gray-300 mt-0.5 truncate">
-            {typeof track.artist === "object"
-              ? track.artist?.username
-              : track.artist || "Artist"}
+            {artistName}
           </p>
-          <p className="text-[10px] text-gray-500 font-medium mt-0.5">
+          <p className="text-[10px] text-gray-500 font-medium mt-0.5 truncate">
             {track.album || "Single Track"}
           </p>
         </div>
 
         {/* 4. Progress Scrubber Bar */}
-        <div className="mb-6 px-1">
+        <div className="mb-4 px-1">
           <div className="relative flex items-center group">
             <input
               type="range"
@@ -95,7 +169,7 @@ export default function RightPlayer({ onSeek }) {
               max="100"
               value={isNaN(progressPercent) ? 0 : progressPercent}
               onChange={handleSliderChange}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:h-1.5 transition-all"
             />
           </div>
           <div className="flex justify-between items-center text-[10px] font-semibold text-gray-400 mt-2">
@@ -103,12 +177,34 @@ export default function RightPlayer({ onSeek }) {
             <span>{formatTime(currentDuration)}</span>
           </div>
         </div>
+
+        {/* 5. Volume Slider Control */}
+        <div className="flex items-center gap-2.5 px-1 mb-5">
+          <button
+            onClick={toggleMute}
+            className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+            title={isMuted ? "Unmute" : "Mute"}
+          >
+            <VolumeIcon size={16} />
+          </button>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={isMuted ? 0 : Math.round(volume * 100)}
+            onChange={(e) => setVolume(Number(e.target.value) / 100)}
+            className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white hover:h-1.5 transition-all"
+          />
+          <span className="text-[10px] text-gray-500 font-medium w-6 text-right">
+            {isMuted ? "0%" : `${Math.round(volume * 100)}%`}
+          </span>
+        </div>
       </div>
 
-      {/* 5. Blue Controller Card */}
+      {/* 6. Blue Controller Card */}
       <div className="bg-blue-600 rounded-3xl p-5 shadow-xl shadow-blue-600/30 text-white flex flex-col items-center">
         {/* Buttons Row */}
-        <div className="w-full flex items-center justify-between px-2 mb-4">
+        <div className="w-full flex items-center justify-between px-2 mb-3">
           {/* Shuffle Toggle */}
           <button
             onClick={toggleShuffle}
@@ -166,14 +262,117 @@ export default function RightPlayer({ onSeek }) {
           </button>
         </div>
 
-        {/* Lyrics Pull-up Tab */}
-        <div className="flex flex-col items-center cursor-pointer text-white/80 hover:text-white transition-colors">
-          <ChevronUp size={14} className="-mb-0.5" />
+        {/* Lyrics Pull-Up Tab Button */}
+        <button
+          onClick={() => {
+            setShowLyrics(true);
+            setShowQueue(false);
+          }}
+          className="flex flex-col items-center cursor-pointer text-white/80 hover:text-white transition-colors group"
+        >
+          <ChevronUp
+            size={14}
+            className="-mb-0.5 group-hover:-translate-y-0.5 transition-transform"
+          />
           <span className="text-[10px] font-bold tracking-widest uppercase">
             Lyrics
           </span>
-        </div>
+        </button>
       </div>
+
+      {/* 7. SLIDE-UP OVERLAY: Up Next Queue Drawer */}
+      {showQueue && (
+        <div className="absolute inset-0 bg-[#14151f]/95 backdrop-blur-md z-30 p-5 flex flex-col">
+          <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <ListMusic size={16} className="text-blue-500" />
+              Queue ({queue.length} songs)
+            </h3>
+            <button
+              onClick={() => setShowQueue(false)}
+              className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 pr-1">
+            {queue.map((song, i) => {
+              const isCurrent = song._id === track._id;
+              const songArtist =
+                typeof song.artist === "object"
+                  ? song.artist?.username
+                  : song.artist;
+
+              return (
+                <div
+                  key={song._id || i}
+                  onClick={() => playTrack(song, queue)}
+                  className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
+                    isCurrent
+                      ? "bg-blue-600/20 border border-blue-500/30 text-white"
+                      : "hover:bg-white/5 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <img
+                    src={song.coverArt || "https://via.placeholder.com/100"}
+                    alt={song.title}
+                    className="w-9 h-9 rounded-lg object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-xs font-semibold truncate ${
+                        isCurrent ? "text-blue-400" : ""
+                      }`}
+                    >
+                      {song.title}
+                    </p>
+                    <p className="text-[10px] text-gray-500 truncate">
+                      {songArtist}
+                    </p>
+                  </div>
+                  {isCurrent && isPlaying && (
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 8. SLIDE-UP OVERLAY: Lyrics Drawer */}
+      {showLyrics && (
+        <div className="absolute inset-0 bg-[#0d0e17]/95 backdrop-blur-md z-30 p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-white truncate">
+                {track.title}
+              </h3>
+              <p className="text-[10px] text-gray-400 truncate">{artistName}</p>
+            </div>
+            <button
+              onClick={() => setShowLyrics(false)}
+              className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer flex items-center gap-1 text-xs"
+            >
+              <ChevronDown size={18} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 text-center">
+            {loadingLyrics ? (
+              <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs gap-2">
+                <Music size={24} className="animate-bounce text-blue-500" />
+                <span>Finding lyrics...</span>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-gray-300 font-medium whitespace-pre-line py-4">
+                {lyrics}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
