@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X, CheckCircle2, Heart, Info } from "lucide-react";
 import api from "./api/axios";
 import { usePlayerStore } from "./store/usePlayerStore";
 import { useAuthStore } from "./store/useAuthStore";
 import { useFavoritesStore } from "./store/useFavoritesStore";
+import { useToastStore } from "./store/useToastStore";
 
 // Components
 import Sidebar from "./components/Sidebar";
@@ -20,15 +21,18 @@ import PlaylistView from "./components/PlaylistView";
 import AddToPlaylistModal from "./components/AddToPlaylistModal";
 import AlbumsView from "./components/AlbumsView";
 import ArtistsView from "./components/ArtistsView";
+import RecentView from "./components/RecentView";
+import GenresView from "./components/GenresView";
+import LocalView from "./components/LocalView";
 
 export default function App() {
   const audioRef = useRef(null);
   const [currentView, setCurrentView] = useState("explore");
-  const [selectedPlaylist, setSelectedPlaylist] = useState(null); // Active playlist
-  const [selectedArtist, setSelectedArtist] = useState(null); // Active artist
-  const [playlistTrackToAdd, setPlaylistTrackToAdd] = useState(null); // Track for Add-to-Playlist modal
+  const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+  const [selectedArtist, setSelectedArtist] = useState(null);
+  const [playlistTrackToAdd, setPlaylistTrackToAdd] = useState(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isUploadOpen, setIsUploadOpen] = useState(false); // Controls Upload Modal
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [tracks, setTracks] = useState([]);
   const [activeFilter, setActiveFilter] = useState("");
 
@@ -41,11 +45,14 @@ export default function App() {
     setDuration,
     togglePlay,
     playNext,
+    playPrevious,
+    toggleMute,
     setQueue,
   } = usePlayerStore();
 
   const { isAuthenticated, checkAuth } = useAuthStore();
-  const { fetchLikedSongs } = useFavoritesStore();
+  const { fetchLikedSongs, toggleLike } = useFavoritesStore();
+  const { toast } = useToastStore();
 
   // 1. Check existing session ONCE on mount
   useEffect(() => {
@@ -84,7 +91,49 @@ export default function App() {
     }
   }, [volume, isMuted]);
 
-  // 5. Filter by Genre or Keyword
+  // 5. Global Spotify Desktop Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA" ||
+        e.target.isContentEditable
+      ) {
+        return;
+      }
+
+      // Spacebar: Play / Pause
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlay();
+      }
+
+      // ArrowRight: Next Track
+      if (e.key === "ArrowRight") {
+        playNext();
+      }
+
+      // ArrowLeft: Previous Track
+      if (e.key === "ArrowLeft") {
+        playPrevious();
+      }
+
+      // M Key: Mute / Unmute
+      if (e.key === "m" || e.key === "M") {
+        toggleMute();
+      }
+
+      // L Key: Like / Unlike current song
+      if ((e.key === "l" || e.key === "L") && currentTrack) {
+        toggleLike(currentTrack);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentTrack, togglePlay, playNext, playPrevious, toggleMute, toggleLike]);
+
+  // 6. Filter by Genre or Keyword
   const handleFilterMusic = async (filterKeyword) => {
     if (!filterKeyword) return;
     setActiveFilter(filterKeyword);
@@ -101,7 +150,7 @@ export default function App() {
     }
   };
 
-  // 6. Audio synchronization with HTML5 Audio element
+  // 7. Audio synchronization with HTML5 Audio element
   useEffect(() => {
     if (!audioRef.current) return;
 
@@ -140,7 +189,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#11121a] text-white overflow-hidden select-none">
+    <div className="flex h-screen w-screen bg-[#11121a] text-white overflow-hidden select-none relative">
       {/* Hidden Native Audio Element (Autoplay next song on ended) */}
       <audio
         ref={audioRef}
@@ -148,6 +197,20 @@ export default function App() {
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => playNext()}
       />
+
+      {/* Floating Animated Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1c1e2b]/95 backdrop-blur-md text-white text-xs font-semibold px-5 py-3 rounded-full border border-white/10 shadow-2xl flex items-center gap-2.5 animate-bounce">
+          {toast.type === "heart" ? (
+            <Heart size={16} className="text-red-500 fill-red-500" />
+          ) : toast.type === "info" ? (
+            <Info size={16} className="text-blue-400" />
+          ) : (
+            <CheckCircle2 size={16} className="text-emerald-400" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
 
       {/* Auth Modal Popup */}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
@@ -210,8 +273,21 @@ export default function App() {
               initialArtist={selectedArtist}
               onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
             />
+          ) : currentView === "genres" ? (
+            /* View E: Full Genres & Moods Screen */
+            <GenresView
+              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+            />
+          ) : currentView === "recent" ? (
+            /* View F: Recently Played Screen */
+            <RecentView
+              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+            />
+          ) : currentView === "local" ? (
+            /* View G: Local Computer Files Screen */
+            <LocalView />
           ) : (
-            /* View E: Home Dashboard */
+            /* View H: Home Dashboard */
             <>
               {/* Active Filter Pill */}
               {activeFilter && (
@@ -232,7 +308,7 @@ export default function App() {
 
               <HeroBanner featuredTrack={tracks[0]} />
 
-              {/* Interactive Top Artists (Takes you directly to their profile) */}
+              {/* Interactive Top Artists */}
               <TopArtists
                 onSelectArtist={(artistName) => {
                   setSelectedArtist(artistName);
@@ -242,7 +318,10 @@ export default function App() {
 
               {/* Interactive Genres & Top Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                <GenresGrid onSelectGenre={handleFilterMusic} />
+                <GenresGrid
+                  onSelectGenre={handleFilterMusic}
+                  onSeeAll={() => setCurrentView("genres")}
+                />
                 <TopCharts
                   tracks={tracks}
                   onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}

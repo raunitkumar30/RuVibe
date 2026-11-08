@@ -1,5 +1,14 @@
 import { create } from "zustand";
 
+const getSavedRecent = () => {
+  try {
+    const saved = localStorage.getItem("groovvy_recent");
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
 export const usePlayerStore = create((set, get) => ({
   // State
   currentTrack: null,     // Currently playing track
@@ -12,6 +21,25 @@ export const usePlayerStore = create((set, get) => ({
   currentIndex: 0,        // Position in queue
   isShuffle: false,       // Shuffle active?
   isRepeat: false,        // Repeat active?
+  recentlyPlayed: getSavedRecent(), // Persisted recent songs list
+
+  // Helper to record history
+  addToRecent: (track) => {
+    if (!track?._id) return;
+    const current = get().recentlyPlayed || [];
+    const updated = [track, ...current.filter((t) => t._id !== track._id)].slice(0, 30);
+    try {
+      localStorage.setItem("groovvy_recent", JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Could not save to localStorage", e);
+    }
+    set({ recentlyPlayed: updated });
+  },
+
+  clearRecent: () => {
+    localStorage.removeItem("groovvy_recent");
+    set({ recentlyPlayed: [] });
+  },
 
   // 1. Play specific track & load playlist queue
   playTrack: (track, trackList = null) => {
@@ -21,6 +49,9 @@ export const usePlayerStore = create((set, get) => ({
     }
 
     const idx = currentQueue.findIndex((t) => t._id === track._id);
+
+    // Save to history
+    get().addToRecent(track);
 
     set({
       currentTrack: track,
@@ -56,6 +87,7 @@ export const usePlayerStore = create((set, get) => ({
 
     const nextTrack = queue[nextIndex];
     if (nextTrack) {
+      get().addToRecent(nextTrack);
       set({
         currentTrack: nextTrack,
         currentIndex: nextIndex,
@@ -79,6 +111,7 @@ export const usePlayerStore = create((set, get) => ({
     const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
     const prevTrack = queue[prevIndex];
     if (prevTrack) {
+      get().addToRecent(prevTrack);
       set({
         currentTrack: prevTrack,
         currentIndex: prevIndex,

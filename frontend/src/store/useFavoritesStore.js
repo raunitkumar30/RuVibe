@@ -1,41 +1,49 @@
 import { create } from "zustand";
 import api from "../api/axios";
+import { useToastStore } from "./useToastStore";
 
 export const useFavoritesStore = create((set, get) => ({
   likedSongs: [],
-  likedSongIds: [], // Standard crash-proof array
+  likedSongIds: new Set(),
+  isLoading: false,
 
-  // 1. Fetch user's liked songs from backend
+  // 1. Fetch user's liked songs from database
   fetchLikedSongs: async () => {
+    set({ isLoading: true });
     try {
-      const res = await api.get("/music/liked");
-      const musics = res.data?.musics || [];
-      const ids = musics.map((m) => String(m._id));
-      set({ likedSongs: musics, likedSongIds: ids });
+      const response = await api.get("/music/liked");
+      const musics = response.data?.musics || [];
+      const ids = new Set(musics.map((m) => m._id));
+      set({ likedSongs: musics, likedSongIds: ids, isLoading: false });
     } catch {
-      console.log("Could not fetch favorites yet (user may be logged out)");
+      set({ isLoading: false });
     }
   },
 
-  // 2. Toggle like on a track
+  // 2. Toggle like on a track & show notification
   toggleLike: async (track) => {
-    if (!track || !track._id) return;
-    const { likedSongIds, likedSongs } = get();
-    const trackId = String(track._id);
-    const isCurrentlyLiked = likedSongIds.includes(trackId);
+    if (!track?._id) return;
+
+    const { likedSongs, likedSongIds } = get();
+    const isCurrentlyLiked = likedSongIds.has(track._id);
 
     // Optimistic UI update
-    let updatedIds = isCurrentlyLiked
-      ? likedSongIds.filter((id) => id !== trackId)
-      : [...likedSongIds, trackId];
+    const updatedIds = new Set(likedSongIds);
+    let updatedSongs = [...likedSongs];
 
-    let updatedSongs = isCurrentlyLiked
-      ? likedSongs.filter((s) => String(s._id) !== trackId)
-      : [track, ...likedSongs];
+    if (isCurrentlyLiked) {
+      updatedIds.delete(track._id);
+      updatedSongs = updatedSongs.filter((s) => s._id !== track._id);
+      useToastStore.getState().showToast(`Removed from Liked Songs`, "info");
+    } else {
+      updatedIds.add(track._id);
+      updatedSongs = [track, ...updatedSongs];
+      useToastStore.getState().showToast(`Added to your Liked Songs!`, "heart");
+    }
 
-    set({ likedSongIds: updatedIds, likedSongs: updatedSongs });
+    set({ likedSongs: updatedSongs, likedSongIds: updatedIds });
 
-    // Send request to backend
+    // Sync with backend database
     try {
       await api.post(`/music/${track._id}/like`, {
         title: track.title,
@@ -49,15 +57,14 @@ export const useFavoritesStore = create((set, get) => ({
             : track.artist,
       });
     } catch (err) {
-      console.error("Failed to sync like with server:", err);
-      // Revert if error
-      set({ likedSongIds, likedSongs });
+      console.error("Failed to toggle like on backend:", err);
+      // Revert if API failed
+      set({ likedSongs, likedSongIds });
     }
   },
 
+  // Helper check
   isLiked: (trackId) => {
-    if (!trackId) return false;
-    const ids = get().likedSongIds || [];
-    return ids.includes(String(trackId));
+    return get().likedSongIds.has(trackId);
   },
 }));

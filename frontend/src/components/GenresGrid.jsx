@@ -1,13 +1,13 @@
 import React from "react";
 
-export default function GenresGrid({ onSelectGenre }) {
+export default function GenresGrid({ onSelectGenre, onSeeAll }) {
   const genres = [
-    { name: "Dance Beat", bg: "bg-[#4a6485]" },
-    { name: "Electro Pop", bg: "bg-[#7c7365]" },
-    { name: "Alternative Indie", bg: "bg-[#915643]" },
-    { name: "Hip Hop", bg: "bg-[#275355]" },
-    { name: "Classical Period", bg: "bg-[#714b60]" },
-    { name: "Hip Hop Rap", bg: "bg-[#384869]" },
+    { name: "Hip Hop", bg: "bg-[#ba3225]" },
+    { name: "Pop", bg: "bg-[#1e6191]" },
+    { name: "Lo-Fi Chill", bg: "bg-[#654062]" },
+    { name: "EDM & Dance", bg: "bg-[#0f8b8d]" },
+    { name: "Workout & Gym", bg: "bg-[#d94f26]" },
+    { name: "Alternative Indie", bg: "bg-[#355c7d]" },
   ];
 
   return (
@@ -15,7 +15,10 @@ export default function GenresGrid({ onSelectGenre }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-bold text-white tracking-wide">Genres</h2>
-        <button className="text-xs text-gray-400 hover:text-white font-medium transition-colors">
+        <button
+          onClick={onSeeAll}
+          className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors cursor-pointer"
+        >
           See all
         </button>
       </div>
