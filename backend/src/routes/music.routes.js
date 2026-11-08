@@ -1,17 +1,23 @@
 const express = require("express");
 const musicController = require("../controllers/music.controller");
 const multer = require("multer");
-const authMiddleware = require("../middlewares/auth.middleware"); 
+const authMiddleware = require("../middlewares/auth.middleware");
 
-const upload = multer({ 
-    storage: multer.memoryStorage() 
+const upload = multer({
+  storage: multer.memoryStorage(),
 });
 
 const router = express.Router();
 
 router.get("/search", authMiddleware.authUser, musicController.searchMusic);
 
-router.post("/upload",authMiddleware.authArtist, upload.single("file"), musicController.createMusic);
+// 🎙️ Real dynamic podcasts endpoint
+router.get("/podcasts", authMiddleware.authUser, musicController.searchPodcasts);
+
+// 📻 Real live streaming radio stations endpoint
+router.get("/radio-stations", authMiddleware.authUser, musicController.getRadioStations);
+
+router.post("/upload", authMiddleware.authArtist, upload.single("file"), musicController.createMusic);
 
 router.post("/create-album", authMiddleware.authArtist, upload.single("file"), musicController.createAlbum);
 

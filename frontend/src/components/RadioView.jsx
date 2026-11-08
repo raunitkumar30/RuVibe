@@ -1,281 +1,182 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Radio,
   Play,
   Pause,
-  Headphones,
-  Sparkles,
   Signal,
-  Flame,
-  Volume2,
+  Search,
+  Loader2,
+  Headphones,
 } from "lucide-react";
+import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
 
 export default function RadioView() {
-  const [activeStationId, setActiveStationId] = useState("radio_lofi");
+  const [stations, setStations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTag, setSearchTag] = useState("bollywood");
+
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
 
-  const stations = [
-    {
-      id: "radio_lofi",
-      name: "Lo-Fi Cafe 24/7",
-      tagline: "Beats to study, code, and relax to. Mellow jazz chops & vinyl crackle.",
-      listeners: "38.4k listening",
-      frequency: "88.5 FM",
-      color: "from-purple-900/60 to-indigo-950",
-      accent: "text-purple-400",
-      border: "border-purple-500/30",
-      image:
-        "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&auto=format&fit=crop&q=80",
-      tracks: [
-        {
-          _id: "lofi_1",
-          title: "Midnight Tokyo Rain",
-          artist: "Chilled Cow Sessions",
-          duration: 164,
-          coverArt:
-            "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-        {
-          _id: "lofi_2",
-          title: "Warm Coffee Steam",
-          artist: "Study Beats Collective",
-          duration: 182,
-          coverArt:
-            "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      id: "radio_global",
-      name: "Top 50 Worldwide",
-      tagline: "The most played songs on planet Earth right this second.",
-      listeners: "82.1k listening",
-      frequency: "95.1 FM",
-      color: "from-blue-900/60 to-cyan-950",
-      accent: "text-blue-400",
-      border: "border-blue-500/30",
-      image:
-        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80",
-      tracks: [
-        {
-          _id: "glob_1",
-          title: "Blinding Lights",
-          artist: "The Weeknd",
-          duration: 200,
-          coverArt:
-            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-        {
-          _id: "glob_2",
-          title: "Save Your Tears",
-          artist: "The Weeknd",
-          duration: 215,
-          coverArt:
-            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      id: "radio_hiphop",
-      name: "Hip-Hop Heavyweights",
-      tagline: "High-octane 808s, street anthems, and modern rap royalty.",
-      listeners: "54.8k listening",
-      frequency: "102.3 FM",
-      color: "from-red-900/60 to-orange-950",
-      accent: "text-red-400",
-      border: "border-red-500/30",
-      image:
-        "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&auto=format&fit=crop&q=80",
-      tracks: [
-        {
-          _id: "hh_1",
-          title: "SICKO MODE",
-          artist: "Travis Scott",
-          duration: 312,
-          coverArt:
-            "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      id: "radio_rnb",
-      name: "Late Night R&B Soul",
-      tagline: "Silk vocals, slow-tempo trap drums, and midnight confessions.",
-      listeners: "29.7k listening",
-      frequency: "98.7 FM",
-      color: "from-pink-900/60 to-rose-950",
-      accent: "text-pink-400",
-      border: "border-pink-500/30",
-      image:
-        "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&auto=format&fit=crop&q=80",
-      tracks: [
-        {
-          _id: "rnb_1",
-          title: "Fair Trade",
-          artist: "Drake ft. Travis Scott",
-          duration: 291,
-          coverArt:
-            "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      id: "radio_dance",
-      name: "Ibiza Club Sessions",
-      tagline: "Deep house, euphoric vocal trance, and festival sunset drops.",
-      listeners: "41.9k listening",
-      frequency: "105.5 FM",
-      color: "from-teal-900/60 to-emerald-950",
-      accent: "text-teal-400",
-      border: "border-teal-500/30",
-      image:
-        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop&q=80",
-      tracks: [
-        {
-          _id: "edm_1",
-          title: "Levitating (Club Mix)",
-          artist: "Dua Lipa",
-          duration: 203,
-          coverArt:
-            "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      id: "radio_synth",
-      name: "Cyberpunk 1984",
-      tagline: "Driving analog synthesizers, neon highways, and retro outrun vibes.",
-      listeners: "17.3k listening",
-      frequency: "91.9 FM",
-      color: "from-fuchsia-900/60 to-purple-950",
-      accent: "text-fuchsia-400",
-      border: "border-fuchsia-500/30",
-      image:
-        "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400&auto=format&fit=crop&q=80",
-      tracks: [
-        {
-          _id: "synth_1",
-          title: "Neo Tokyo Sunset",
-          artist: "Synthwave Collective",
-          duration: 220,
-          coverArt:
-            "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
+  const curatedTags = [
+    { label: "Bollywood", query: "bollywood" },
+    { label: "Pop Hits", query: "pop" },
+    { label: "Classic Rock", query: "rock" },
+    { label: "Chillout & Lofi", query: "chill" },
+    { label: "Electronic / Dance", query: "dance" },
+    { label: "Hip-Hop", query: "rap" },
+    { label: "Jazz FM", query: "jazz" },
   ];
 
+  const fetchStations = async (query) => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/music/radio-stations?q=${encodeURIComponent(query)}`);
+      setStations(res.data?.stations || []);
+    } catch (err) {
+      console.error("Failed to load radio stations:", err);
+      setStations([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStations(searchTag);
+  }, []);
+
   const handleTuneIn = (station) => {
-    setActiveStationId(station.id);
-    if (station.tracks && station.tracks.length > 0) {
-      playTrack(station.tracks[0], station.tracks);
+    if (currentTrack?._id === station._id) {
+      togglePlay();
+    } else {
+      playTrack(station, stations);
     }
   };
 
   return (
     <div className="space-y-6 select-none animate-fadeIn">
-      {/* Hero Banner */}
-      <div className="relative rounded-3xl p-8 bg-gradient-to-r from-blue-900/30 via-[#181a26] to-[#12131d] border border-white/5 shadow-2xl flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
-        <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
-          <div className="w-24 h-24 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-xl shadow-blue-600/20">
-            <Radio size={44} className="animate-pulse" />
+      {/* Banner */}
+      <div className="relative rounded-3xl p-8 bg-gradient-to-r from-red-950/40 via-[#181a28] to-[#12131d] border border-white/5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-5 text-center sm:text-left">
+          <div className="w-20 h-20 rounded-2xl bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400 shadow-xl shadow-red-600/20 shrink-0">
+            <Radio size={40} className="animate-pulse" />
           </div>
 
           <div>
-            <div className="flex items-center justify-center sm:justify-start gap-2 text-[11px] font-bold tracking-widest uppercase text-red-400 mb-1">
+            <div className="flex items-center justify-center sm:justify-start gap-2 text-[10px] font-bold tracking-widest uppercase text-red-400 mb-1">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-              <span>Live Broadcasts</span>
+              <span>Global Live Airwaves</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-              Groovvy Radio
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              Live Streaming Radio
             </h1>
-            <p className="text-xs font-semibold text-gray-400 mt-0.5">
-              Curated non-stop stations streaming 24 hours a day with zero interruptions
+            <p className="text-xs text-gray-400">
+              Tune in to real-time live FM & digital broadcasts from around the world.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 bg-[#12131d] px-4 py-2 rounded-2xl border border-white/10 text-xs font-semibold text-gray-300">
           <Signal size={15} className="text-emerald-400" />
-          <span>High Fidelity Stream (320kbps)</span>
+          <span>Real-time Audio Stream</span>
         </div>
       </div>
 
-      {/* Grid of Stations */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {stations.map((station) => {
-          const isTunedIn = activeStationId === station.id && isPlaying;
+      {/* Genre Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {curatedTags.map((t) => (
+          <button
+            key={t.query}
+            onClick={() => {
+              setSearchTag(t.query);
+              fetchStations(t.query);
+            }}
+            className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              searchTag === t.query
+                ? "bg-red-600 text-white font-bold"
+                : "bg-[#181a26] text-gray-400 hover:text-white hover:bg-white/5 border border-white/5"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-          return (
-            <div
-              key={station.id}
-              onClick={() => handleTuneIn(station)}
-              className={`group bg-gradient-to-br ${station.color} p-6 rounded-3xl border ${
-                isTunedIn ? station.border : "border-white/5 hover:border-white/20"
-              } cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between h-64 relative overflow-hidden`}
-            >
-              {/* Top Row: Frequency & Live Badge */}
-              <div className="flex items-center justify-between z-10">
-                <span className="text-xs font-mono font-bold tracking-widest text-white/70 bg-black/30 px-3 py-1 rounded-full border border-white/10">
-                  {station.frequency}
-                </span>
+      {/* Stations Grid */}
+      {loading ? (
+        <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
+          <Loader2 size={24} className="animate-spin text-red-500" />
+          <span className="text-xs">Tuning into live airwaves...</span>
+        </div>
+      ) : stations.length === 0 ? (
+        <div className="py-16 text-center text-gray-500 text-xs bg-[#181a26]/40 rounded-3xl border border-white/5">
+          No live stations found. Try selecting another genre above.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {stations.map((st) => {
+            const isTunedIn = currentTrack?._id === st._id && isPlaying;
 
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-white/90 bg-black/40 px-3 py-1 rounded-full">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isTunedIn ? "bg-emerald-400 animate-pulse" : "bg-red-500"}`}></span>
-                  <span>{station.listeners}</span>
+            return (
+              <div
+                key={st._id}
+                onClick={() => handleTuneIn(st)}
+                className={`group p-5 rounded-3xl border cursor-pointer transition-all duration-300 hover:-translate-y-1 flex items-center justify-between gap-4 ${
+                  isTunedIn
+                    ? "bg-red-600/15 border-red-500/40 shadow-xl shadow-red-600/10"
+                    : "bg-[#181a26] hover:bg-[#1e2030] border-white/5 hover:border-white/20"
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-[#242738] overflow-hidden shrink-0 flex items-center justify-center border border-white/10">
+                    <img
+                      src={st.coverArt}
+                      alt={st.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src =
+                          "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80";
+                      }}
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h4
+                      className={`text-sm font-bold truncate ${
+                        isTunedIn ? "text-red-400" : "text-white"
+                      }`}
+                    >
+                      {st.title}
+                    </h4>
+                    <p className="text-[11px] text-gray-400 truncate">
+                      {st.album} • {st.genre || "Broadcast"}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Station Info */}
-              <div className="z-10 my-auto">
-                <h3 className="text-xl font-black text-white tracking-tight mb-1 group-hover:text-white transition-colors">
-                  {station.name}
-                </h3>
-                <p className="text-xs text-white/75 line-clamp-2 leading-relaxed">
-                  {station.tagline}
-                </p>
-              </div>
+                {/* Live Indicator / Tune In Button */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {isTunedIn && (
+                    <div className="flex items-end gap-0.5 h-4 mr-1">
+                      <span className="w-1 bg-red-500 rounded-full animate-bounce h-4"></span>
+                      <span className="w-1 bg-red-500 rounded-full animate-bounce delay-100 h-2.5"></span>
+                      <span className="w-1 bg-red-500 rounded-full animate-bounce delay-200 h-3.5"></span>
+                    </div>
+                  )}
 
-              {/* Bottom Row: Play Button & Visualizer */}
-              <div className="flex items-center justify-between z-10 pt-2 border-t border-white/10">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
                     {isTunedIn ? (
-                      <Pause size={18} fill="currentColor" />
+                      <Pause size={16} fill="currentColor" />
                     ) : (
-                      <Play size={18} fill="currentColor" className="ml-0.5" />
+                      <Play size={16} fill="currentColor" className="ml-0.5" />
                     )}
                   </div>
-                  <span className="text-xs font-bold text-white">
-                    {isTunedIn ? "On Air" : "Tune In"}
-                  </span>
                 </div>
-
-                {/* Animated Equalizer Bars when playing */}
-                {isTunedIn ? (
-                  <div className="flex items-end gap-1 h-5">
-                    <span className="w-1 bg-white rounded-full animate-bounce h-5"></span>
-                    <span className="w-1 bg-white rounded-full animate-bounce delay-100 h-3"></span>
-                    <span className="w-1 bg-white rounded-full animate-bounce delay-200 h-4"></span>
-                    <span className="w-1 bg-white rounded-full animate-bounce delay-150 h-2"></span>
-                  </div>
-                ) : (
-                  <Headphones size={18} className="text-white/40" />
-                )}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
