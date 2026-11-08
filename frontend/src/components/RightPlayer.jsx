@@ -43,7 +43,6 @@ export default function RightPlayer({ onSeek }) {
   const [lyrics, setLyrics] = useState("");
   const [loadingLyrics, setLoadingLyrics] = useState(false);
 
-  // Fallback track if nothing has been selected yet
   const track = currentTrack || {
     title: "Butterfly Effect",
     artist: "Travis Scott",
@@ -113,24 +112,29 @@ export default function RightPlayer({ onSeek }) {
     if (onSeek) onSeek(newTime);
   };
 
-  // Determine which volume icon to show
-  const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+  const VolumeIcon =
+    isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <aside className="relative w-80 h-screen bg-[#14151f] border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0">
+    <aside className="relative w-80 h-screen bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0 z-20">
       {/* 1. Top Header */}
       <div>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-bold text-white tracking-wider">Player</h2>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <h2 className="text-xs font-bold text-gray-300 tracking-wider uppercase">
+              Now Playing
+            </h2>
+          </div>
           <button
             onClick={() => {
               setShowQueue((prev) => !prev);
               setShowLyrics(false);
             }}
             title="Queue"
-            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`p-1.5 rounded-xl transition-all cursor-pointer ${
               showQueue
-                ? "text-blue-500 bg-blue-500/10"
+                ? "text-blue-400 bg-blue-500/20"
                 : "text-gray-400 hover:text-white hover:bg-white/5"
             }`}
           >
@@ -138,21 +142,34 @@ export default function RightPlayer({ onSeek }) {
           </button>
         </div>
 
-        {/* 2. Large Album Art Card */}
-        <div className="w-full aspect-square rounded-3xl overflow-hidden shadow-2xl mb-5 bg-[#181a24] border border-white/5 group relative">
-          <img
-            src={track.coverArt || "https://via.placeholder.com/600"}
-            alt={track.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        {/* 2. Large Album Art with Ambient Glow */}
+        <div className="relative w-full aspect-square mb-6 group">
+          {/* Ambient Glow Reflection */}
+          <div
+            className="absolute inset-0 rounded-3xl blur-2xl opacity-40 scale-95 transition-opacity duration-700 pointer-events-none group-hover:opacity-60"
+            style={{
+              backgroundImage: `url(${track.coverArt || "https://via.placeholder.com/600"})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
           />
+
+          {/* Actual Album Image */}
+          <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-black/80 bg-[#181a24] border border-white/10">
+            <img
+              src={track.coverArt || "https://via.placeholder.com/600"}
+              alt={track.title}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          </div>
         </div>
 
         {/* 3. Track Info */}
-        <div className="text-center mb-5">
-          <h3 className="text-lg font-extrabold text-white tracking-tight truncate">
+        <div className="text-center mb-5 px-1">
+          <h3 className="text-base font-extrabold text-white tracking-tight truncate drop-shadow-sm">
             {track.title}
           </h3>
-          <p className="text-xs font-semibold text-gray-300 mt-0.5 truncate">
+          <p className="text-xs font-medium text-blue-400 mt-0.5 truncate">
             {artistName}
           </p>
           <p className="text-[10px] text-gray-500 font-medium mt-0.5 truncate">
@@ -169,10 +186,10 @@ export default function RightPlayer({ onSeek }) {
               max="100"
               value={isNaN(progressPercent) ? 0 : progressPercent}
               onChange={handleSliderChange}
-              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:h-1.5 transition-all"
+              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500 group-hover:h-1.5 transition-all"
             />
           </div>
-          <div className="flex justify-between items-center text-[10px] font-semibold text-gray-400 mt-2">
+          <div className="flex justify-between items-center text-[10px] font-semibold text-gray-400 mt-2 font-mono">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(currentDuration)}</span>
           </div>
@@ -195,21 +212,21 @@ export default function RightPlayer({ onSeek }) {
             onChange={(e) => setVolume(Number(e.target.value) / 100)}
             className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white hover:h-1.5 transition-all"
           />
-          <span className="text-[10px] text-gray-500 font-medium w-6 text-right">
+          <span className="text-[10px] text-gray-500 font-mono w-7 text-right">
             {isMuted ? "0%" : `${Math.round(volume * 100)}%`}
           </span>
         </div>
       </div>
 
-      {/* 6. Blue Controller Card */}
-      <div className="bg-blue-600 rounded-3xl p-5 shadow-xl shadow-blue-600/30 text-white flex flex-col items-center">
+      {/* 6. Refined Blue Controller Card */}
+      <div className="bg-gradient-to-b from-blue-600 to-blue-700 rounded-3xl p-5 shadow-xl shadow-blue-600/25 border border-blue-400/20 text-white flex flex-col items-center">
         {/* Buttons Row */}
         <div className="w-full flex items-center justify-between px-2 mb-3">
           {/* Shuffle Toggle */}
           <button
             onClick={toggleShuffle}
             title={isShuffle ? "Shuffle ON" : "Shuffle OFF"}
-            className={`transition-colors cursor-pointer p-1 rounded-lg ${
+            className={`transition-all cursor-pointer p-1.5 rounded-xl ${
               isShuffle
                 ? "text-white bg-white/20 font-bold"
                 : "text-white/60 hover:text-white"
@@ -222,7 +239,7 @@ export default function RightPlayer({ onSeek }) {
           <button
             onClick={playPrevious}
             title="Previous track"
-            className="text-white/90 hover:text-white transition-colors active:scale-95 cursor-pointer"
+            className="text-white/90 hover:text-white transition-transform active:scale-90 cursor-pointer"
           >
             <SkipBack size={20} fill="currentColor" />
           </button>
@@ -230,12 +247,12 @@ export default function RightPlayer({ onSeek }) {
           {/* Big White Circular Play/Pause Button */}
           <button
             onClick={togglePlay}
-            className="w-12 h-12 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-lg active:scale-90 transition-transform hover:scale-105 cursor-pointer"
+            className="w-13 h-13 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-2xl active:scale-90 transition-transform hover:scale-105 cursor-pointer"
           >
             {isPlaying ? (
-              <Pause size={20} fill="currentColor" />
+              <Pause size={22} fill="currentColor" />
             ) : (
-              <Play size={20} fill="currentColor" className="ml-0.5" />
+              <Play size={22} fill="currentColor" className="ml-0.5" />
             )}
           </button>
 
@@ -243,7 +260,7 @@ export default function RightPlayer({ onSeek }) {
           <button
             onClick={playNext}
             title="Next track"
-            className="text-white/90 hover:text-white transition-colors active:scale-95 cursor-pointer"
+            className="text-white/90 hover:text-white transition-transform active:scale-90 cursor-pointer"
           >
             <SkipForward size={20} fill="currentColor" />
           </button>
@@ -252,7 +269,7 @@ export default function RightPlayer({ onSeek }) {
           <button
             onClick={toggleRepeat}
             title={isRepeat ? "Repeat Track ON" : "Repeat OFF"}
-            className={`transition-colors cursor-pointer p-1 rounded-lg ${
+            className={`transition-all cursor-pointer p-1.5 rounded-xl ${
               isRepeat
                 ? "text-white bg-white/20 font-bold"
                 : "text-white/60 hover:text-white"
@@ -268,7 +285,7 @@ export default function RightPlayer({ onSeek }) {
             setShowLyrics(true);
             setShowQueue(false);
           }}
-          className="flex flex-col items-center cursor-pointer text-white/80 hover:text-white transition-colors group"
+          className="flex flex-col items-center cursor-pointer text-white/80 hover:text-white transition-colors group mt-0.5"
         >
           <ChevronUp
             size={14}
@@ -282,7 +299,7 @@ export default function RightPlayer({ onSeek }) {
 
       {/* 7. SLIDE-UP OVERLAY: Up Next Queue Drawer */}
       {showQueue && (
-        <div className="absolute inset-0 bg-[#14151f]/95 backdrop-blur-md z-30 p-5 flex flex-col">
+        <div className="absolute inset-0 bg-[#14151f]/95 backdrop-blur-xl z-30 p-5 flex flex-col animate-fadeIn">
           <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <ListMusic size={16} className="text-blue-500" />
@@ -296,7 +313,7 @@ export default function RightPlayer({ onSeek }) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 pr-1">
+          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
             {queue.map((song, i) => {
               const isCurrent = song._id === track._id;
               const songArtist =
@@ -308,7 +325,7 @@ export default function RightPlayer({ onSeek }) {
                 <div
                   key={song._id || i}
                   onClick={() => playTrack(song, queue)}
-                  className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${
+                  className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
                     isCurrent
                       ? "bg-blue-600/20 border border-blue-500/30 text-white"
                       : "hover:bg-white/5 text-gray-400 hover:text-white"
@@ -317,22 +334,22 @@ export default function RightPlayer({ onSeek }) {
                   <img
                     src={song.coverArt || "https://via.placeholder.com/100"}
                     alt={song.title}
-                    className="w-9 h-9 rounded-lg object-cover"
+                    className="w-10 h-10 rounded-xl object-cover"
                   />
                   <div className="flex-1 min-w-0">
                     <p
                       className={`text-xs font-semibold truncate ${
-                        isCurrent ? "text-blue-400" : ""
+                        isCurrent ? "text-blue-400 font-bold" : "text-white"
                       }`}
                     >
                       {song.title}
                     </p>
-                    <p className="text-[10px] text-gray-500 truncate">
+                    <p className="text-[10px] text-gray-500 truncate mt-0.5">
                       {songArtist}
                     </p>
                   </div>
                   {isCurrent && isPlaying && (
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse mr-1"></span>
                   )}
                 </div>
               );
@@ -343,7 +360,7 @@ export default function RightPlayer({ onSeek }) {
 
       {/* 8. SLIDE-UP OVERLAY: Lyrics Drawer */}
       {showLyrics && (
-        <div className="absolute inset-0 bg-[#0d0e17]/95 backdrop-blur-md z-30 p-6 flex flex-col">
+        <div className="absolute inset-0 bg-[#0d0e17]/95 backdrop-blur-xl z-30 p-6 flex flex-col animate-fadeIn">
           <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
             <div className="min-w-0">
               <h3 className="text-sm font-bold text-white truncate">
@@ -353,13 +370,13 @@ export default function RightPlayer({ onSeek }) {
             </div>
             <button
               onClick={() => setShowLyrics(false)}
-              className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer flex items-center gap-1 text-xs"
+              className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer"
             >
               <ChevronDown size={18} />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 text-center">
+          <div className="flex-1 overflow-y-auto pr-1 text-center">
             {loadingLyrics ? (
               <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs gap-2">
                 <Music size={24} className="animate-bounce text-blue-500" />

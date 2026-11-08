@@ -6,6 +6,7 @@ const {
   searchGlobalTracks,
   searchPodcasts: fetchPodcasts,
   getRadioStations: fetchRadioStations,
+  getSongLyrics,
 } = require("../services/musicApi.service");
 
 async function createMusic(req, res) {
@@ -20,13 +21,9 @@ async function createMusic(req, res) {
     return res.status(400).json({ message: "Song title is required" });
   }
 
-  // 1. Upload audio to ImageKit
   const uploadResult = await uploadFile(file.buffer.toString("base64"));
-
-  // 2. Fetch cover art, genre, and duration
   const metaData = await getTrackMetadata(title);
 
-  // 3. Save song to MongoDB
   const music = await musicModel.create({
     title,
     uri: uploadResult.url,
@@ -112,7 +109,6 @@ async function logoutUser(req, res) {
   res.status(200).json({ message: "Logged out successfully" });
 }
 
-// Full Hybrid Search (Local MongoDB + Full-Length Global Music)
 async function searchMusic(req, res) {
   const { q } = req.query;
 
@@ -121,7 +117,6 @@ async function searchMusic(req, res) {
   }
 
   try {
-    // 1. Search local MongoDB
     const localMusics = await musicModel
       .find({
         $or: [
@@ -132,10 +127,7 @@ async function searchMusic(req, res) {
       .populate("artist", "username email role")
       .limit(10);
 
-    // 2. Search Global Music (Full-length streams!)
     const globalMusics = await searchGlobalTracks(q, 15);
-
-    // 3. Combine: Local songs first, then Global catalog songs
     const allMusics = [...localMusics, ...globalMusics];
 
     return res.status(200).json({
@@ -149,7 +141,6 @@ async function searchMusic(req, res) {
   }
 }
 
-// Real Podcasts Search Controller
 async function searchPodcasts(req, res) {
   const { q } = req.query;
   try {
@@ -160,7 +151,6 @@ async function searchPodcasts(req, res) {
   }
 }
 
-// Real Live Radio Stations Controller
 async function getRadioStations(req, res) {
   const { q } = req.query;
   try {
@@ -168,6 +158,16 @@ async function getRadioStations(req, res) {
     return res.status(200).json({ stations });
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch radio stations" });
+  }
+}
+
+async function getLyrics(req, res) {
+  const { artist, title } = req.query;
+  try {
+    const lyrics = await getSongLyrics(artist, title);
+    return res.status(200).json({ lyrics });
+  } catch {
+    return res.status(200).json({ lyrics: null });
   }
 }
 
@@ -252,6 +252,7 @@ module.exports = {
   searchMusic,
   searchPodcasts,
   getRadioStations,
+  getLyrics,
   toggleLikeMusic,
   getLikedMusics,
 };

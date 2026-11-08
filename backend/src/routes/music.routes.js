@@ -11,11 +11,14 @@ const router = express.Router();
 
 router.get("/search", authMiddleware.authUser, musicController.searchMusic);
 
-// 🎙️ Real dynamic podcasts endpoint
+// 🎙️ Dynamic Podcasts Endpoint
 router.get("/podcasts", authMiddleware.authUser, musicController.searchPodcasts);
 
-// 📻 Real live streaming radio stations endpoint
+// 📻 Live Radio Stations Endpoint
 router.get("/radio-stations", authMiddleware.authUser, musicController.getRadioStations);
+
+// 📝 Lyrics Endpoint
+router.get("/lyrics", authMiddleware.authUser, musicController.getLyrics);
 
 router.post("/upload", authMiddleware.authArtist, upload.single("file"), musicController.createMusic);
 

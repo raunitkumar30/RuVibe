@@ -1,7 +1,14 @@
 const axios = require("axios");
 const CryptoJS = require("crypto-js");
 
-// Helper to clean HTML entities in titles and artist names
+// Environment API variables with safe defaults
+const JIOSAAVN_API_URL = process.env.JIOSAAVN_API_URL || "https://www.jiosaavn.com/api.php";
+const JIOSAAVN_DES_KEY = process.env.JIOSAAVN_DES_KEY || "38346591";
+const ITUNES_API_URL = process.env.ITUNES_API_URL || "https://itunes.apple.com/search";
+const RADIO_BROWSER_API_URL = process.env.RADIO_BROWSER_API_URL || "https://de1.api.radio-browser.info/json/stations/search";
+const LYRICS_API_URL = process.env.LYRICS_API_URL || "https://api.lyrics.ovh/v1";
+
+// Helper to clean HTML entities
 function cleanHtml(str) {
   if (!str) return "";
   return str
@@ -12,11 +19,11 @@ function cleanHtml(str) {
     .replace(/&gt;/g, ">");
 }
 
-// Decrypt JioSaavn encrypted_media_url to get full 160kbps/320kbps audio link
+// Decrypt JioSaavn encrypted_media_url using key from .env
 function decryptJioSaavnUrl(encryptedUrl) {
   if (!encryptedUrl) return null;
   try {
-    const key = CryptoJS.enc.Utf8.parse("38346591");
+    const key = CryptoJS.enc.Utf8.parse(JIOSAAVN_DES_KEY);
     const decrypted = CryptoJS.DES.decrypt(
       { ciphertext: CryptoJS.enc.Base64.parse(encryptedUrl) },
       key,
@@ -24,7 +31,6 @@ function decryptJioSaavnUrl(encryptedUrl) {
     );
     const raw = decrypted.toString(CryptoJS.enc.Utf8);
     if (!raw) return null;
-    // Prefer full 160kbps AAC/MP4 stream
     return raw.replace("_96.mp4", "_160.mp4");
   } catch (err) {
     console.error("JioSaavn decryption error:", err.message);
@@ -32,12 +38,12 @@ function decryptJioSaavnUrl(encryptedUrl) {
   }
 }
 
-// 1. Fetch metadata for a single song on artist upload
+// 1. Fetch metadata on upload
 async function getTrackMetadata(trackTitle) {
   if (!trackTitle || trackTitle.trim() === "") return null;
 
   try {
-    const res = await axios.get("https://www.jiosaavn.com/api.php", {
+    const res = await axios.get(JIOSAAVN_API_URL, {
       params: {
         __call: "search.getResults",
         _format: "json",
@@ -69,13 +75,12 @@ async function getTrackMetadata(trackTitle) {
   return null;
 }
 
-// 2. 🌟 SEARCH GLOBAL MUSIC: Full Length Bollywood + Hollywood (No 30-sec limit!)
+// 2. Search Global Full-Length Songs
 async function searchGlobalTracks(query, limit = 15) {
   if (!query || query.trim() === "") return [];
 
   try {
-    // 1. Primary: JioSaavn Global Catalog (Bollywood, Hollywood, Regional, International)
-    const response = await axios.get("https://www.jiosaavn.com/api.php", {
+    const response = await axios.get(JIOSAAVN_API_URL, {
       params: {
         __call: "search.getResults",
         _format: "json",
@@ -107,7 +112,7 @@ async function searchGlobalTracks(query, limit = 15) {
             artist: cleanHtml(item.primary_artists || item.singers || "Artist"),
             album: cleanHtml(item.album || "Single"),
             coverArt,
-            uri: fullAudioUrl, // 🔥 FULL 160kbps AUDIO STREAM (PLAYS COMPLETE SONG!)
+            uri: fullAudioUrl,
             duration: Number(item.duration) || 210,
             genre: (item.language || "Music").toUpperCase(),
             isExternal: true,
@@ -119,9 +124,9 @@ async function searchGlobalTracks(query, limit = 15) {
     console.error("JioSaavn search error:", error.message);
   }
 
-  // 2. Secondary Fallback: iTunes
+  // Fallback to iTunes API from .env
   try {
-    const itunesRes = await axios.get("https://itunes.apple.com/search", {
+    const itunesRes = await axios.get(ITUNES_API_URL, {
       params: { term: query, entity: "song", limit },
       timeout: 5000,
     });
@@ -144,10 +149,10 @@ async function searchGlobalTracks(query, limit = 15) {
   }
 }
 
-// 3. 🎙️ SEARCH REAL PODCASTS (Full Length Episodes from Apple Podcast Directory)
+// 3. Search Podcasts
 async function searchPodcasts(query = "technology", limit = 15) {
   try {
-    const response = await axios.get("https://itunes.apple.com/search", {
+    const response = await axios.get(ITUNES_API_URL, {
       params: {
         term: query,
         entity: "podcastEpisode",
@@ -165,7 +170,7 @@ async function searchPodcasts(query = "technology", limit = 15) {
       artist: ep.artistName || ep.collectionName,
       album: "Podcast Episode",
       coverArt: ep.artworkUrl600 || ep.artworkUrl160 || "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=600&auto=format&fit=crop&q=80",
-      uri: ep.episodeUrl, // 🔥 FULL LENGTH PODCAST MP3 AUDIO STREAM!
+      uri: ep.episodeUrl,
       duration: ep.trackTimeMillis ? Math.round(ep.trackTimeMillis / 1000) : 3600,
       releaseDate: ep.releaseDate ? new Date(ep.releaseDate).toLocaleDateString() : "Recent",
       description: ep.description || "Tune in to this full podcast episode.",
@@ -177,22 +182,19 @@ async function searchPodcasts(query = "technology", limit = 15) {
   }
 }
 
-// 4. 📻 SEARCH REAL LIVE RADIO STATIONS (Community Radio Browser API)
+// 4. Search Live Radio Stations
 async function getRadioStations(query = "hits", limit = 15) {
   try {
-    const response = await axios.get(
-      "https://de1.api.radio-browser.info/json/stations/search",
-      {
-        params: {
-          name: query,
-          limit,
-          order: "votes",
-          reverse: "true",
-          hidebroken: "true",
-        },
-        timeout: 6000,
-      }
-    );
+    const response = await axios.get(RADIO_BROWSER_API_URL, {
+      params: {
+        name: query,
+        limit,
+        order: "votes",
+        reverse: "true",
+        hidebroken: "true",
+      },
+      timeout: 6000,
+    });
 
     const stations = response.data || [];
 
@@ -204,7 +206,7 @@ async function getRadioStations(query = "hits", limit = 15) {
       coverArt: st.favicon && st.favicon.startsWith("http")
         ? st.favicon
         : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
-      uri: st.url_resolved || st.url, // 🔥 REAL LIVE STREAMING AUDIO URL!
+      uri: st.url_resolved || st.url,
       duration: 0,
       genre: st.tags || "Radio",
       isRadio: true,
@@ -217,9 +219,23 @@ async function getRadioStations(query = "hits", limit = 15) {
   }
 }
 
+// 5. Fetch Song Lyrics
+async function getSongLyrics(artist, title) {
+  if (!artist || !title) return null;
+  try {
+    const res = await axios.get(`${LYRICS_API_URL}/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`, {
+      timeout: 5000,
+    });
+    return res.data?.lyrics || null;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   getTrackMetadata,
   searchGlobalTracks,
   searchPodcasts,
   getRadioStations,
+  getSongLyrics,
 };
