@@ -24,6 +24,8 @@ import ArtistsView from "./components/ArtistsView";
 import RecentView from "./components/RecentView";
 import GenresView from "./components/GenresView";
 import LocalView from "./components/LocalView";
+import RadioView from "./components/RadioView";
+import PodcastView from "./components/PodcastView";
 
 export default function App() {
   const audioRef = useRef(null);
@@ -188,6 +190,14 @@ export default function App() {
     }
   };
 
+  // Determine current active category tab in Navbar
+  const activeCategory =
+    currentView === "radio"
+      ? "LIVE"
+      : currentView === "podcast"
+      ? "PODCAST"
+      : "MUSIC";
+
   return (
     <div className="flex h-screen w-screen bg-[#11121a] text-white overflow-hidden select-none relative">
       {/* Hidden Native Audio Element (Autoplay next song on ended) */}
@@ -250,6 +260,12 @@ export default function App() {
         <Navbar
           onOpenAuth={() => setIsAuthOpen(true)}
           onOpenUpload={() => setIsUploadOpen(true)}
+          currentCategory={activeCategory}
+          onSelectCategory={(tab) => {
+            if (tab === "LIVE") setCurrentView("radio");
+            else if (tab === "PODCAST") setCurrentView("podcast");
+            else setCurrentView("explore");
+          }}
         />
 
         <main className="flex-1 overflow-y-auto px-8 pb-10 space-y-7 scrollbar-thin scrollbar-thumb-white/10">
@@ -286,8 +302,14 @@ export default function App() {
           ) : currentView === "local" ? (
             /* View G: Local Computer Files Screen */
             <LocalView />
+          ) : currentView === "radio" ? (
+            /* View H: Live Radio Stations Screen */
+            <RadioView />
+          ) : currentView === "podcast" ? (
+            /* View I: Podcasts & Shows Screen */
+            <PodcastView />
           ) : (
-            /* View H: Home Dashboard */
+            /* View J: Home Dashboard */
             <>
               {/* Active Filter Pill */}
               {activeFilter && (

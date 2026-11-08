@@ -14,8 +14,12 @@ import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { usePlayerStore } from "../store/usePlayerStore";
 
-export default function Navbar({ onOpenAuth, onOpenUpload }) {
-  const [activeTab, setActiveTab] = useState("MUSIC");
+export default function Navbar({
+  onOpenAuth,
+  onOpenUpload,
+  currentCategory = "MUSIC",
+  onSelectCategory,
+}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -87,9 +91,9 @@ export default function Navbar({ onOpenAuth, onOpenUpload }) {
         {tabs.map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => onSelectCategory && onSelectCategory(tab)}
             className={`text-xs font-bold tracking-widest transition-all cursor-pointer ${
-              activeTab === tab
+              currentCategory === tab
                 ? "text-white border-b-2 border-blue-500 pb-1"
                 : "text-gray-500 hover:text-gray-300"
             }`}
@@ -99,167 +103,137 @@ export default function Navbar({ onOpenAuth, onOpenUpload }) {
         ))}
       </div>
 
-      {/* 2. Center Search Bar + Floating Dropdown */}
-      <div ref={searchContainerRef} className="w-96 relative">
-        <Search
-          size={16}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-        />
-        <input
-          type="text"
-          value={searchTerm}
-          onFocus={() => {
-            if (searchResults.length > 0) setShowDropdown(true);
-          }}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Type here to search (e.g. Eminem, Starboy)"
-          className="w-full bg-[#1c1e2b] text-sm text-white placeholder-gray-500 pl-11 pr-10 py-2.5 rounded-full border border-white/5 focus:outline-none focus:border-blue-500/50 transition-all shadow-inner"
-        />
+      {/* 2. Floating Live Search Bar with Dropdown */}
+      <div ref={searchContainerRef} className="relative flex-1 max-w-md mx-8">
+        <div className="relative flex items-center">
+          <Search
+            size={16}
+            className="absolute left-4 text-gray-400 pointer-events-none"
+          />
 
-        {/* Clear or Loading Icon */}
-        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">
+          <input
+            type="text"
+            placeholder="Search artists, songs, podcasts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => {
+              if (searchResults.length > 0) setShowDropdown(true);
+            }}
+            className="w-full bg-[#181a24] text-xs text-white placeholder-gray-500 pl-11 pr-10 py-2.5 rounded-full border border-white/5 focus:outline-none focus:border-blue-500/50 transition-colors shadow-inner"
+          />
+
           {isSearching ? (
-            <Loader2 size={16} className="text-blue-400 animate-spin" />
+            <Loader2
+              size={14}
+              className="absolute right-4 text-blue-500 animate-spin"
+            />
           ) : searchTerm ? (
             <button
               onClick={handleClearSearch}
-              className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+              className="absolute right-4 text-gray-400 hover:text-white transition-colors cursor-pointer"
             >
-              <X size={15} />
+              <X size={14} />
             </button>
           ) : null}
         </div>
 
-        {/* Floating Search Dropdown */}
-        {showDropdown && searchTerm.trim() && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-[#181a24]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-2 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-            {isSearching ? (
-              <div className="p-4 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
-                <Loader2 size={14} className="animate-spin text-blue-500" />
-                <span>Searching tracks...</span>
-              </div>
-            ) : searchResults.length > 0 ? (
-              <div className="space-y-1">
-                <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                  Search Results ({searchResults.length})
-                </div>
+        {/* Live Search Floating Results Dropdown */}
+        {showDropdown && searchResults.length > 0 && (
+          <div className="absolute top-12 left-0 right-0 bg-[#181a24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+            <div className="p-2 border-b border-white/5">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2">
+                Top Matches ({searchResults.length})
+              </span>
+            </div>
 
-                {searchResults.map((track) => {
-                  const artistName =
-                    typeof track.artist === "object"
-                      ? track.artist?.username
-                      : track.artist;
+            <div className="p-1 space-y-0.5">
+              {searchResults.map((song) => {
+                const songArtist =
+                  typeof song.artist === "object"
+                    ? song.artist?.username
+                    : song.artist || "Artist";
 
-                  return (
-                    <div
-                      key={track._id}
-                      onClick={() => handleSelectTrack(track)}
-                      className="group flex items-center justify-between p-2 rounded-xl hover:bg-white/5 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-sm bg-black/40">
-                          <img
-                            src={
-                              track.coverArt || "https://via.placeholder.com/100"
-                            }
-                            alt={track.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-blue-600/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <Play size={14} fill="white" className="text-white" />
-                          </div>
-                        </div>
-
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
-                            {track.title}
-                          </p>
-                          <p className="text-[11px] text-gray-400 truncate">
-                            {artistName || "Unknown Artist"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {track.isExternal ? (
-                          <span className="text-[9px] bg-blue-500/20 text-blue-300 font-semibold px-2 py-0.5 rounded-full border border-blue-500/30">
-                            Preview
-                          </span>
-                        ) : (
-                          <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                            Uploaded
-                          </span>
-                        )}
-
-                        <span className="text-[11px] text-gray-400 font-medium">
-                          {track.duration
-                            ? `${Math.floor(track.duration / 60)}:${String(
-                                track.duration % 60
-                              ).padStart(2, "0")}`
-                            : "3:30"}
-                        </span>
+                return (
+                  <div
+                    key={song._id}
+                    onClick={() => handleSelectTrack(song)}
+                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group"
+                  >
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-[#242738] shrink-0">
+                      <img
+                        src={song.coverArt || "https://via.placeholder.com/100"}
+                        alt={song.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                        <Play size={14} fill="currentColor" />
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-6 text-center text-xs text-gray-400">
-                No songs found for "{searchTerm}"
-              </div>
-            )}
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
+                        {song.title}
+                      </p>
+                      <p className="text-[10px] text-gray-400 truncate">
+                        {songArtist} • {song.genre || "Music"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      {/* 3. User & Quick Actions */}
+      {/* 3. Action Controls & Profile Pill */}
       <div className="flex items-center gap-4">
-        {/* Upload Track Button (Only visible to Artists!) */}
+        {/* Artist Upload Track Button */}
         {isAuthenticated && user?.role === "artist" && (
           <button
             onClick={onOpenUpload}
-            className="flex items-center gap-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 text-xs font-semibold px-3.5 py-2 rounded-full transition-all cursor-pointer shadow-sm active:scale-95"
-            title="Upload new track"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md shadow-blue-500/20 transition-all active:scale-95 cursor-pointer"
+            title="Upload your track to Groovvy"
           >
             <Upload size={14} />
-            <span>Upload Track</span>
+            <span className="hidden sm:inline">Upload Track</span>
           </button>
         )}
 
-        <button className="text-gray-400 hover:text-white transition-colors cursor-pointer">
+        <button className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1">
           <Bell size={18} />
         </button>
-        <button className="text-gray-400 hover:text-white transition-colors cursor-pointer">
+
+        <button className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1">
           <Settings size={18} />
         </button>
 
-        {isAuthenticated && user ? (
-          <div className="flex items-center gap-3 pl-3 border-l border-white/10">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-md shadow-blue-500/20">
-              {user.username ? user.username.charAt(0).toUpperCase() : "U"}
+        {/* Profile Pill */}
+        {isAuthenticated ? (
+          <div className="flex items-center gap-2.5 bg-[#181a24] p-1.5 pr-3 rounded-full border border-white/5">
+            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+              {user?.username ? user.username[0].toUpperCase() : "U"}
             </div>
-
             <div className="flex flex-col">
               <span className="text-xs font-semibold text-white leading-tight">
-                {user.username}
+                {user?.username}
               </span>
-              <span className="text-[10px] text-blue-400 uppercase font-bold tracking-wider">
-                {user.role}
+              <span className="text-[9px] text-blue-400 font-medium uppercase tracking-wider">
+                {user?.role || "user"}
               </span>
             </div>
-
             <button
               onClick={logout}
               title="Logout"
-              className="text-gray-400 hover:text-red-400 ml-2 transition-colors cursor-pointer"
+              className="text-gray-400 hover:text-red-400 transition-colors ml-2 cursor-pointer"
             >
-              <LogOut size={16} />
+              <LogOut size={14} />
             </button>
           </div>
         ) : (
           <button
             onClick={onOpenAuth}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-full transition-all shadow-md shadow-blue-600/30 active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all active:scale-95 cursor-pointer"
           >
             <UserIcon size={14} />
             <span>Sign In</span>
