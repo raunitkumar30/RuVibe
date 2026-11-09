@@ -11,13 +11,22 @@ import {
   PlusSquare,
   Speaker,
   Activity,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
+import { useToastStore } from "../store/useToastStore";
 
 export default function Sidebar({ currentView, onSelectView, onSelectPlaylist }) {
   const [playlists, setPlaylists] = useState([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [loadingCreate, setLoadingCreate] = useState(false);
+
   const { isAuthenticated } = useAuthStore();
+  const { showToast } = useToastStore();
 
   const menuItems = [
     { id: "explore", label: "Explore", icon: Compass },
@@ -68,29 +77,47 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
     fetchPlaylists();
   }, [isAuthenticated]);
 
-  // 2. Create a new real playlist in MongoDB
-  const handleCreatePlaylist = async () => {
-    const name = window.prompt("Enter new playlist name:");
-    if (!name || !name.trim()) return;
+  // 2. Submit new playlist smoothly without browser prompt/alert
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!newPlaylistName.trim()) {
+      setIsCreating(false);
+      return;
+    }
+
+    const playlistName = newPlaylistName.trim();
+    setLoadingCreate(true);
 
     if (!isAuthenticated) {
-      setPlaylists((prev) => [{ _id: `local_${Date.now()}`, name: name.trim() }, ...prev]);
+      const localPl = { _id: `local_${Date.now()}`, name: playlistName };
+      setPlaylists((prev) => [localPl, ...prev]);
+      setIsCreating(false);
+      setNewPlaylistName("");
+      setLoadingCreate(false);
+      showToast(`Created playlist "${playlistName}"`);
       return;
     }
 
     try {
-      const res = await api.post("/playlists", { name: name.trim() });
+      const res = await api.post("/playlists", { name: playlistName });
       if (res.data?.playlist) {
         setPlaylists((prev) => [res.data.playlist, ...prev]);
+        showToast(`Created playlist "${playlistName}"`);
       }
     } catch (err) {
       console.error("Create playlist error:", err);
-      setPlaylists((prev) => [{ _id: `local_${Date.now()}`, name: name.trim() }, ...prev]);
+      const fallbackPl = { _id: `local_${Date.now()}`, name: playlistName };
+      setPlaylists((prev) => [fallbackPl, ...prev]);
+      showToast(`Created playlist "${playlistName}"`);
+    } finally {
+      setIsCreating(false);
+      setNewPlaylistName("");
+      setLoadingCreate(false);
     }
   };
 
   return (
-    <aside className="w-60 h-screen bg-[#14151f] flex flex-col justify-between p-5 border-r border-white/5 select-none overflow-y-auto shrink-0">
+    <aside className="w-60 h-screen bg-[#14151f] flex flex-col justify-between p-5 border-r border-white/5 select-none overflow-y-auto shrink-0 z-20">
       <div>
         {/* Brand Logo */}
         <div
@@ -166,14 +193,56 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
           <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase px-2 mb-2">
             Playlist
           </p>
+
+          {/* Create Button */}
           <button
-            onClick={handleCreatePlaylist}
+            onClick={() => setIsCreating(true)}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all mb-2 cursor-pointer"
           >
             <PlusSquare size={18} className="text-blue-500" />
             <span>Create New</span>
           </button>
 
+          {/* Inline Playlist Creator Input (No Browser Prompt!) */}
+          {isCreating && (
+            <form onSubmit={handleCreateSubmit} className="mb-2 px-1 animate-fadeIn">
+              <div className="flex items-center gap-1 bg-[#1c1e2b] border border-blue-500/50 rounded-xl p-1 shadow-lg">
+                <input
+                  type="text"
+                  placeholder="Playlist name..."
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  autoFocus
+                  className="flex-1 bg-transparent text-xs text-white placeholder-gray-500 px-2 py-1 outline-none min-w-0"
+                />
+                <button
+                  type="submit"
+                  disabled={loadingCreate}
+                  className="p-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white cursor-pointer shrink-0"
+                  title="Save Playlist"
+                >
+                  {loadingCreate ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Check size={13} />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreating(false);
+                    setNewPlaylistName("");
+                  }}
+                  className="p-1 rounded-lg text-gray-400 hover:text-white cursor-pointer shrink-0"
+                  title="Cancel"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Playlists List */}
           <div className="space-y-1">
             {playlists.map((playlist, idx) => {
               const playlistName = typeof playlist === "string" ? playlist : playlist.name;
