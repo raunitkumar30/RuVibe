@@ -4,6 +4,7 @@ const { uploadFile } = require("../services/storage.service");
 const {
   getTrackMetadata,
   searchGlobalTracks,
+  fetchTopArtists,
   searchPodcasts: fetchPodcasts,
   getRadioStations: fetchRadioStations,
   getSongLyrics,
@@ -87,7 +88,7 @@ async function getAllMusics(req, res) {
       }
     }
 
-    // Format rank ("01", "02"...) and plays count for sleek display
+    // Format rank and plays count
     const formatted = allTracks.map((track, i) => {
       const playsCount = Math.floor(95 - i * 4.2);
       return {
@@ -105,6 +106,20 @@ async function getAllMusics(req, res) {
   } catch (error) {
     console.error("Error in getAllMusics:", error);
     res.status(500).json({ message: "Error fetching music tracks" });
+  }
+}
+
+// 🌟 GET TOP ARTISTS: Real photos & stats
+async function getTopArtists(req, res) {
+  try {
+    const artists = await fetchTopArtists();
+    return res.status(200).json({
+      message: "Top artists fetched successfully",
+      artists,
+    });
+  } catch (error) {
+    console.error("Error fetching top artists:", error);
+    return res.status(500).json({ message: "Failed to fetch top artists" });
   }
 }
 
@@ -281,6 +296,7 @@ module.exports = {
   createMusic,
   createAlbum,
   getAllMusics,
+  getTopArtists,
   getAllAlbums,
   getAlbumById,
   logoutUser,

@@ -4,101 +4,63 @@ import {
   Play,
   Pause,
   Heart,
-  Clock,
   ArrowLeft,
   CheckCircle2,
   Loader2,
   MoreHorizontal,
   UserPlus,
   Check,
+  Search,
 } from "lucide-react";
 import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useFavoritesStore } from "../store/useFavoritesStore";
 
 export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
-  const [selectedArtist, setSelectedArtist] = useState(initialArtist || null);
+  const [selectedArtist, setSelectedArtist] = useState(null);
+  const [artistsList, setArtistsList] = useState([]);
   const [artistTracks, setArtistTracks] = useState([]);
   const [loadingTracks, setLoadingTracks] = useState(false);
+  const [loadingArtists, setLoadingArtists] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
 
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { toggleLike, isLiked } = useFavoritesStore();
 
-  const curatedArtists = [
-    {
-      name: "The Weeknd",
-      monthlyListeners: "114,249,081",
-      genre: "R&B / Pop",
-      bio: "Canadian singer-songwriter known for his sonic versatility and dark lyricism.",
-      avatar:
-        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=600&auto=format&fit=crop&q=80",
-      banner:
-        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Travis Scott",
-      monthlyListeners: "68,432,190",
-      genre: "Hip-Hop / Trap",
-      bio: "American rapper, singer, songwriter, and record producer hailing from Houston, Texas.",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80",
-      banner:
-        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Billie Eilish",
-      monthlyListeners: "99,102,400",
-      genre: "Alternative / Pop",
-      bio: "Multiple Grammy Award-winning American singer and songwriter known for her ethereal vocals.",
-      avatar:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80",
-      banner:
-        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Drake",
-      monthlyListeners: "84,650,220",
-      genre: "Hip-Hop / Rap",
-      bio: "Global rap icon and founder of OVO Sound, dominating worldwide charts.",
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&auto=format&fit=crop&q=80",
-      banner:
-        "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=1200&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Dua Lipa",
-      monthlyListeners: "77,890,110",
-      genre: "Pop / Disco",
-      bio: "English and Albanian singer-songwriter redefining modern disco and dance-pop.",
-      avatar:
-        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80",
-      banner:
-        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Kanye West",
-      monthlyListeners: "62,310,405",
-      genre: "Hip-Hop / Experimental",
-      bio: "Pioneering producer and artist whose visionary albums revolutionized modern music production.",
-      avatar:
-        "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=600&auto=format&fit=crop&q=80",
-      banner:
-        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&auto=format&fit=crop&q=80",
-    },
-  ];
-
-  // Whenever initialArtist prop changes, update selection
+  // 1. Fetch real top artists from backend on mount
   useEffect(() => {
-    if (initialArtist) {
-      const match = curatedArtists.find(
-        (a) => a.name.toLowerCase() === initialArtist.toLowerCase()
-      );
-      setSelectedArtist(match || { name: initialArtist, monthlyListeners: "45,000,000", genre: "Music" });
+    async function loadArtists() {
+      try {
+        const res = await api.get("/music/top-artists");
+        const list = res.data?.artists || [];
+        setArtistsList(list);
+
+        if (initialArtist) {
+          const match = list.find(
+            (a) => a.name.toLowerCase() === initialArtist.toLowerCase()
+          );
+          setSelectedArtist(
+            match || {
+              name: initialArtist,
+              monthlyListeners: "75,000,000",
+              genre: "Popular Artist",
+              avatar:
+                "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
+            }
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load artists:", err);
+      } finally {
+        setLoadingArtists(false);
+      }
     }
+
+    loadArtists();
   }, [initialArtist]);
 
-  // Fetch top tracks for the selected artist
+  // 2. Fetch full hit songs for the selected artist
   useEffect(() => {
     if (!selectedArtist) return;
 
@@ -141,13 +103,17 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
     }
   };
 
+  const filteredArtists = artistsList.filter((a) =>
+    a.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // ──────────────────────────────────────────────
-  // VIEW B: ARTIST PROFILE DETAIL PAGE
+  // VIEW B: SINGLE VERIFIED ARTIST PAGE
   // ──────────────────────────────────────────────
   if (selectedArtist) {
     const avatar =
       selectedArtist.avatar ||
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80";
+      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
 
     return (
       <div className="space-y-6 select-none animate-fadeIn">
@@ -163,14 +129,19 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
           <span>Back to all artists</span>
         </button>
 
-        {/* Hero Banner with Verified Badge */}
+        {/* Hero Banner with Real Photo & Verified Badge */}
         <div className="relative rounded-3xl overflow-hidden p-8 sm:p-10 bg-gradient-to-r from-blue-950 via-[#181a28] to-[#12131d] border border-white/5 shadow-2xl">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 relative z-10">
-            <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full overflow-hidden shadow-2xl shadow-black/80 shrink-0 border-2 border-white/10">
+            {/* Real Circular Photo */}
+            <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full overflow-hidden shadow-2xl shadow-black/80 shrink-0 border-2 border-white/10 bg-[#222538]">
               <img
                 src={avatar}
                 alt={selectedArtist.name}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.src =
+                    "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
+                }}
               />
             </div>
 
@@ -193,7 +164,7 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
                 )}
               </p>
 
-              {/* Action Buttons: Play All + Follow */}
+              {/* Actions: Play All + Follow */}
               <div className="mt-5 flex items-center justify-center sm:justify-start gap-4">
                 <button
                   onClick={handlePlayAll}
@@ -231,12 +202,14 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
 
         {/* Popular Tracks Section */}
         <div className="bg-[#181a26]/70 rounded-3xl p-6 border border-white/5">
-          <h3 className="text-base font-bold text-white mb-4">Popular Hits</h3>
+          <h3 className="text-base font-bold text-white mb-4">
+            Popular Hits by {selectedArtist.name}
+          </h3>
 
           {loadingTracks ? (
             <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
               <Loader2 size={22} className="animate-spin text-blue-500" />
-              <span className="text-xs">Loading tracks...</span>
+              <span className="text-xs">Loading songs...</span>
             </div>
           ) : artistTracks.length === 0 ? (
             <div className="py-12 text-center text-gray-500 text-xs">
@@ -343,53 +316,82 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
   }
 
   // ──────────────────────────────────────────────
-  // VIEW A: ALL ARTISTS GRID (DISCOVERY)
+  // VIEW A: REAL ARTISTS EXPLORER
   // ──────────────────────────────────────────────
   return (
     <div className="space-y-6 select-none animate-fadeIn">
-      <div>
-        <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-          <Mic2 size={26} className="text-blue-500" />
-          Featured Artists
-        </h2>
-        <p className="text-xs text-gray-400 mt-1">
-          Explore world-class musicians, their discographies, and chart-topping hits.
-        </p>
+      {/* Header & Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+            <Mic2 size={26} className="text-blue-500" />
+            Top Artists
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Explore world-renowned artists, their discographies, and top streams.
+          </p>
+        </div>
+
+        {/* Search Artists Box */}
+        <div className="relative w-full sm:w-64">
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            placeholder="Search artists..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#181a24] text-xs text-white placeholder-gray-500 pl-10 pr-4 py-2.5 rounded-2xl border border-white/5 focus:outline-none focus:border-blue-500/50"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
-        {curatedArtists.map((artist) => (
-          <div
-            key={artist.name}
-            onClick={() => setSelectedArtist(artist)}
-            className="group bg-[#181a24] hover:bg-[#1f2130] p-4 rounded-3xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/30 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95 shadow-md"
-          >
-            {/* Avatar Circle with Hover Play Overlay */}
-            <div className="relative w-28 h-28 rounded-full overflow-hidden mb-3 shadow-lg">
-              <img
-                src={artist.avatar}
-                alt={artist.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
-                  <Play size={16} fill="currentColor" className="ml-0.5" />
+      {loadingArtists ? (
+        <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
+          <Loader2 size={24} className="animate-spin text-blue-500" />
+          <span className="text-xs">Loading artists...</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+          {filteredArtists.map((artist) => (
+            <div
+              key={artist.name}
+              onClick={() => setSelectedArtist(artist)}
+              className="group bg-[#181a24] hover:bg-[#1f2130] p-4 rounded-3xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/30 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95 shadow-md"
+            >
+              {/* Real Circular Portrait */}
+              <div className="relative w-28 h-28 rounded-full overflow-hidden mb-3 shadow-lg bg-[#222538] border border-white/10">
+                <img
+                  src={artist.avatar}
+                  alt={artist.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    e.target.src =
+                      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
+                    <Play size={16} fill="currentColor" className="ml-0.5" />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <p className="text-sm font-bold text-white truncate w-full group-hover:text-blue-400 transition-colors">
-              {artist.name}
-            </p>
-            <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-              {artist.genre}
-            </p>
-            <span className="text-[10px] text-gray-500 mt-1">
-              {artist.monthlyListeners} listeners
-            </span>
-          </div>
-        ))}
-      </div>
+              <p className="text-sm font-bold text-white truncate w-full group-hover:text-blue-400 transition-colors">
+                {artist.name}
+              </p>
+              <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                {artist.genre}
+              </p>
+              <span className="text-[10px] text-gray-500 mt-1">
+                {artist.monthlyListeners || "Popular Artist"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

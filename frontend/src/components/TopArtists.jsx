@@ -1,44 +1,62 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import api from "../api/axios";
 
 export default function TopArtists({ onSelectArtist }) {
-  const artists = [
+  const [artists, setArtists] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fallback with real artist photos
+  const fallbackArtists = [
+    {
+      name: "Arijit Singh",
+      plays: "185M Plays",
+      avatar: "https://c.saavncdn.com/artists/Arijit_Singh_004_20241118063717_500x500.jpg",
+    },
     {
       name: "The Weeknd",
-      plays: "114M Plays",
-      avatar:
-        "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80",
+      plays: "162M Plays",
+      avatar: "https://c.saavncdn.com/artists/The_Weeknd_002_20241003071400_500x500.jpg",
     },
     {
-      name: "Travis Scott",
-      plays: "68M Plays",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80",
+      name: "Diljit Dosanjh",
+      plays: "128M Plays",
+      avatar: "https://c.saavncdn.com/artists/Diljit_Dosanjh_005_20231025073054_500x500.jpg",
     },
     {
-      name: "Billie Eilish",
-      plays: "99M Plays",
-      avatar:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+      name: "Taylor Swift",
+      plays: "190M Plays",
+      avatar: "https://c.saavncdn.com/artists/Taylor_Swift_003_20200226074119_500x500.jpg",
     },
     {
       name: "Drake",
-      plays: "84M Plays",
-      avatar:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80",
+      plays: "145M Plays",
+      avatar: "https://c.saavncdn.com/artists/Drake_006_20260520062317_500x500.jpg",
     },
     {
-      name: "Dua Lipa",
-      plays: "77M Plays",
-      avatar:
-        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80",
-    },
-    {
-      name: "Kanye West",
-      plays: "62M Plays",
-      avatar:
-        "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300&auto=format&fit=crop&q=80",
+      name: "Shreya Ghoshal",
+      plays: "115M Plays",
+      avatar: "https://c.saavncdn.com/artists/Shreya_Ghoshal_007_20241101074144_500x500.jpg",
     },
   ];
+
+  useEffect(() => {
+    async function loadArtists() {
+      try {
+        const res = await api.get("/music/top-artists");
+        if (res.data?.artists && res.data.artists.length > 0) {
+          setArtists(res.data.artists);
+        } else {
+          setArtists(fallbackArtists);
+        }
+      } catch {
+        setArtists(fallbackArtists);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadArtists();
+  }, []);
 
   return (
     <section className="select-none">
@@ -52,30 +70,34 @@ export default function TopArtists({ onSelectArtist }) {
         </span>
       </div>
 
-      {/* Grid of Artist Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {artists.map((artist) => (
+      {/* Grid of Real Artist Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
+        {(artists.length > 0 ? artists : fallbackArtists).slice(0, 6).map((artist) => (
           <div
             key={artist.name}
             onClick={() => onSelectArtist && onSelectArtist(artist.name)}
-            className="bg-[#181a24] hover:bg-[#202230] p-3 rounded-2xl flex flex-col items-center text-center border border-white/5 cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-xl group active:scale-95"
+            className="bg-[#181a24] hover:bg-[#1f2130] p-3.5 rounded-2xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/25 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group active:scale-95"
             title={`View ${artist.name}`}
           >
-            {/* Artist Photo */}
-            <div className="w-16 h-16 rounded-xl overflow-hidden mb-2.5 shadow-md">
+            {/* Real Artist Photo (Circular Portrait) */}
+            <div className="w-20 h-20 rounded-full overflow-hidden mb-3 shadow-lg bg-[#222538] border border-white/10 shrink-0">
               <img
                 src={artist.avatar}
                 alt={artist.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                onError={(e) => {
+                  e.target.src =
+                    "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
+                }}
               />
             </div>
 
             {/* Name & Plays */}
-            <p className="text-xs font-semibold text-white truncate w-full group-hover:text-blue-400 transition-colors">
+            <p className="text-xs font-bold text-white truncate w-full group-hover:text-blue-400 transition-colors">
               {artist.name}
             </p>
             <p className="text-[10px] text-gray-400 font-medium mt-0.5">
-              {artist.plays}
+              {artist.plays || "Top Artist"}
             </p>
           </div>
         ))}

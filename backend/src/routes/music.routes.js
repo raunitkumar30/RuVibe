@@ -9,8 +9,9 @@ const upload = multer({
 
 const router = express.Router();
 
-// 🌐 Public Endpoints (Accessible to all users on load)
+// 🌐 Public Endpoints
 router.get("/", musicController.getAllMusics);
+router.get("/top-artists", musicController.getTopArtists);
 router.get("/search", musicController.searchMusic);
 router.get("/podcasts", musicController.searchPodcasts);
 router.get("/radio-stations", musicController.getRadioStations);
@@ -18,7 +19,7 @@ router.get("/lyrics", musicController.getLyrics);
 router.get("/albums", musicController.getAllAlbums);
 router.get("/albums/:albumId", musicController.getAlbumById);
 
-// 🔒 Protected Endpoints (Require Login)
+// 🔒 Protected Endpoints
 router.post("/upload", authMiddleware.authArtist, upload.single("file"), musicController.createMusic);
 router.post("/create-album", authMiddleware.authArtist, upload.single("file"), musicController.createAlbum);
 router.post("/logout", authMiddleware.authUser, musicController.logoutUser);
