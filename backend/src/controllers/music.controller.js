@@ -1,68 +1,76 @@
 const musicModel = require("../models/music.model");
 const albumModel = require("../models/album.model");
-const { uploadFile } = require("../services/storage.service");
+const userModel = require("../models/user.model");
+const {
+  uploadFile,
+  decryptJioSaavnUrl,
+} = require("../services/storage.service");
 const {
   getTrackMetadata,
   searchGlobalTracks,
+  fetchLiveTopCharts,
   fetchTopArtists,
-  searchPodcasts: fetchPodcasts,
-  getRadioStations: fetchRadioStations,
+  searchPodcasts: fetchPodcastsFromApi,
+  getRadioStations: fetchRadioStationsFromApi,
   getSongLyrics,
 } = require("../services/musicApi.service");
 
+// 1. Upload Music
 async function createMusic(req, res) {
-  const { title, genre } = req.body;
+  const { title, album } = req.body;
   const file = req.file;
 
   if (!file) {
-    return res.status(400).json({ message: "Audio file is required" });
+    return res.status(400).json({ message: "Music file is required" });
   }
 
-  if (!title) {
-    return res.status(400).json({ message: "Song title is required" });
+  try {
+    const uploadResult = await uploadFile(file);
+    const metadata = await getTrackMetadata(title);
+
+    const music = await musicModel.create({
+      title: title,
+      artist: req.user.id,
+      album: album || metadata?.albumTitle,
+      coverArt: metadata?.coverArt,
+      duration: metadata?.duration,
+      genre: metadata?.genre,
+      uri: uploadResult.url,
+    });
+
+    if (album) {
+      await albumModel.findByIdAndUpdate(album, {
+        $push: { musics: music._id },
+      });
+    }
+
+    res.status(201).json({
+      message: "Music uploaded successfully",
+      music: music,
+    });
+  } catch (error) {
+    console.error("Error creating music:", error);
+    res.status(500).json({ message: "Failed to upload music" });
   }
-
-  const uploadResult = await uploadFile(file.buffer.toString("base64"));
-  const metaData = await getTrackMetadata(title);
-
-  const music = await musicModel.create({
-    title,
-    uri: uploadResult.url,
-    artist: req.user.id,
-    duration: metaData?.duration || 215,
-    coverArt:
-      metaData?.coverArt ||
-      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=80",
-    genre: genre || metaData?.genre || "Music",
-  });
-
-  res.status(201).json({
-    message: "Music uploaded and created successfully",
-    music: music,
-  });
 }
 
+// 2. Create Album
 async function createAlbum(req, res) {
   const { title, musics } = req.body;
 
   const album = await albumModel.create({
-    title,
+    title: title,
     artist: req.user.id,
     musics: musics,
   });
 
   res.status(201).json({
     message: "Album created successfully",
-    album: {
-      id: album._id,
-      title: album.title,
-      artist: album.artist,
-      musics: album.musics,
-    },
+    album: album,
   });
 }
 
-// 🌟 GET ALL MUSICS: Combines Local Uploads with Trending Hits Auto-Populate
+// 3. 🌟 GET ALL MUSICS: 100% Dynamic Live Top Charts (50 Songs) + Local Uploads
 async function getAllMusics(req, res) {
   try {
     const localMusics = await musicModel
@@ -72,29 +80,27 @@ async function getAllMusics(req, res) {
 
     let allTracks = [...localMusics];
 
-    // If local database has fewer than 15 songs, auto-populate with trending hits!
-    if (allTracks.length < 15) {
-      try {
-        const trendingTracks = await searchGlobalTracks("Top Hits", 15);
-        const existingTitles = new Set(
-          allTracks.map((t) => (t.title || "").toLowerCase().trim())
-        );
-        const uniqueTrending = trendingTracks.filter(
-          (t) => !existingTitles.has((t.title || "").toLowerCase().trim())
-        );
-        allTracks = [...allTracks, ...uniqueTrending];
-      } catch (err) {
-        console.warn("Could not fetch trending tracks fallback:", err.message);
-      }
+    // Fetch 50 real live charting tracks directly from official charts
+    try {
+      const liveChartSongs = await fetchLiveTopCharts(50);
+      const existingTitles = new Set(
+        allTracks.map((t) => (t.title || "").toLowerCase().trim())
+      );
+      const uniqueLive = liveChartSongs.filter(
+        (t) => !existingTitles.has((t.title || "").toLowerCase().trim())
+      );
+      allTracks = [...allTracks, ...uniqueLive];
+    } catch (err) {
+      console.warn("Live chart fetch error fallback:", err.message);
     }
 
     // Format rank and plays count
     const formatted = allTracks.map((track, i) => {
-      const playsCount = Math.floor(95 - i * 4.2);
+      const playsCount = Math.max(20, Math.floor(98 - i * 1.5));
       return {
         ...(track.toObject ? track.toObject() : track),
         rank: String(i + 1).padStart(2, "0"),
-        plays: `${Math.max(15, playsCount)}M Plays`,
+        plays: track.plays || `${playsCount}M Plays`,
       };
     });
 
@@ -109,7 +115,7 @@ async function getAllMusics(req, res) {
   }
 }
 
-// 🌟 GET TOP ARTISTS: Real photos & stats
+// 4. 🌟 GET TOP ARTISTS: 100% Dynamic Live Artists with Official Follower Counts
 async function getTopArtists(req, res) {
   try {
     const artists = await fetchTopArtists();
@@ -123,6 +129,7 @@ async function getTopArtists(req, res) {
   }
 }
 
+// 5. Get All Albums
 async function getAllAlbums(req, res) {
   const albums = await albumModel
     .find()
@@ -136,6 +143,7 @@ async function getAllAlbums(req, res) {
   });
 }
 
+// 6. Get Album by ID
 async function getAlbumById(req, res) {
   const albumId = req.params.albumId;
 
@@ -154,11 +162,13 @@ async function getAlbumById(req, res) {
   });
 }
 
+// 7. Logout User
 async function logoutUser(req, res) {
   res.clearCookie("token");
   res.status(200).json({ message: "Logged out successfully" });
 }
 
+// 8. Search Music
 async function searchMusic(req, res) {
   const { q } = req.query;
 
@@ -177,7 +187,7 @@ async function searchMusic(req, res) {
       .populate("artist", "username email role")
       .limit(10);
 
-    const globalMusics = await searchGlobalTracks(q, 15);
+    const globalMusics = await searchGlobalTracks(q, 20);
     const allMusics = [...localMusics, ...globalMusics];
 
     return res.status(200).json({
@@ -191,112 +201,109 @@ async function searchMusic(req, res) {
   }
 }
 
+// 9. Search Podcasts
 async function searchPodcasts(req, res) {
   const { q } = req.query;
   try {
-    const episodes = await fetchPodcasts(q || "podcast", 15);
+    const episodes = await fetchPodcastsFromApi(q || "podcast", 15);
     return res.status(200).json({ episodes });
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch podcasts" });
   }
 }
 
+// 10. Get Live Radio Stations
 async function getRadioStations(req, res) {
   const { q } = req.query;
   try {
-    const stations = await fetchRadioStations(q || "hits", 15);
+    const stations = await fetchRadioStationsFromApi(q || "hits", 15);
     return res.status(200).json({ stations });
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch radio stations" });
   }
 }
 
+// 11. Get Song Lyrics
 async function getLyrics(req, res) {
   const { artist, title } = req.query;
+  if (!artist || !title) {
+    return res.status(400).json({ message: "artist and title query parameters are required" });
+  }
+
   try {
     const lyrics = await getSongLyrics(artist, title);
     return res.status(200).json({ lyrics });
-  } catch {
-    return res.status(200).json({ lyrics: null });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to fetch lyrics" });
   }
 }
 
+// 12. Toggle Like Music
 async function toggleLikeMusic(req, res) {
-  const { musicId } = req.params;
-  const { title, uri, coverArt, duration, genre, artist } = req.body;
+  const { id } = req.params;
   const userId = req.user.id;
 
   try {
-    let music = null;
-
-    if (musicId && musicId.match(/^[0-9a-fA-F]{24}$/)) {
-      music = await musicModel.findById(musicId);
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    if (!music) {
-      music = await musicModel.findOne({ uri });
-    }
+    const isAlreadyLiked = user.likedSongs?.some(
+      (song) => song._id?.toString() === id || song.toString() === id
+    );
 
-    if (!music && title && uri) {
-      music = await musicModel.create({
-        title,
-        uri,
-        coverArt: coverArt || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80",
-        duration: duration || 210,
-        genre: genre || "Music",
-        artist: userId,
-        likes: [],
+    if (isAlreadyLiked) {
+      user.likedSongs = user.likedSongs.filter(
+        (song) => (song._id ? song._id.toString() : song.toString()) !== id
+      );
+      await user.save();
+      return res.status(200).json({
+        message: "Removed from liked songs",
+        isLiked: false,
+      });
+    } else {
+      const songDetails = req.body.song;
+      if (songDetails) {
+        user.likedSongs.push(songDetails);
+      } else {
+        user.likedSongs.push(id);
+      }
+      await user.save();
+      return res.status(200).json({
+        message: "Added to liked songs",
+        isLiked: true,
       });
     }
-
-    if (!music) {
-      return res.status(404).json({ message: "Music track not found" });
-    }
-
-    const hasLiked = music.likes.includes(userId);
-    let isLiked = false;
-
-    if (hasLiked) {
-      music.likes = music.likes.filter((id) => id.toString() !== userId.toString());
-      isLiked = false;
-    } else {
-      music.likes.push(userId);
-      isLiked = true;
-    }
-
-    await music.save();
-
-    return res.status(200).json({
-      message: isLiked ? "Added to Liked Songs" : "Removed from Liked Songs",
-      isLiked,
-      musicId: music._id,
-      totalLikes: music.likes.length,
-    });
   } catch (error) {
-    console.error("Toggle like error:", error);
-    return res.status(500).json({ message: "Error updating favorite" });
+    console.error("Error in toggleLikeMusic:", error);
+    return res.status(500).json({ message: "Error updating liked songs" });
   }
 }
 
+// 13. Get Liked Musics
 async function getLikedMusics(req, res) {
   const userId = req.user.id;
 
-  const musics = await musicModel
-    .find({ likes: userId })
-    .populate("artist", "username email");
+  try {
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-  return res.status(200).json({
-    message: "Liked songs fetched successfully",
-    total: musics.length,
-    musics,
-  });
+    return res.status(200).json({
+      likedSongs: user.likedSongs || [],
+    });
+  } catch (error) {
+    console.error("Error in getLikedMusics:", error);
+    return res.status(500).json({ message: "Error fetching liked songs" });
+  }
 }
 
 module.exports = {
   createMusic,
   createAlbum,
   getAllMusics,
-  getTopArtists,
   getAllAlbums,
   getAlbumById,
   logoutUser,
@@ -306,4 +313,5 @@ module.exports = {
   getLyrics,
   toggleLikeMusic,
   getLikedMusics,
+  getTopArtists,
 };

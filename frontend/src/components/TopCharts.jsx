@@ -7,12 +7,19 @@ import {
   ListPlus,
   FastForward,
   FolderPlus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useFavoritesStore } from "../store/useFavoritesStore";
 import { useToastStore } from "../store/useToastStore";
 
-export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
+export default function TopCharts({
+  tracks,
+  activeFilter,
+  onClearFilter,
+  onAddToPlaylist,
+}) {
   const {
     currentTrack,
     isPlaying,
@@ -26,9 +33,11 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
   const { showToast } = useToastStore();
 
   const [activeMenuTrackId, setActiveMenuTrackId] = useState(null);
+  const [showAllTracks, setShowAllTracks] = useState(false);
   const menuRef = useRef(null);
 
   const chartTracks = tracks && tracks.length > 0 ? tracks : [];
+  const visibleTracks = showAllTracks ? chartTracks : chartTracks.slice(0, 15);
 
   // Close floating menu when clicking outside
   useEffect(() => {
@@ -69,20 +78,33 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-base font-bold text-white tracking-wide">
-            Top Charts
+            {activeFilter ? `Tracks by "${activeFilter}"` : "Top Charts"}
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            The most played songs right now
+            {activeFilter
+              ? "All matching songs available to stream in full"
+              : "The most played songs right now"}
           </p>
         </div>
-        <span className="text-xs text-gray-400 font-medium font-mono">
-          {chartTracks.length} tracks
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-400 font-medium font-mono">
+            {chartTracks.length} tracks loaded
+          </span>
+          {chartTracks.length > 15 && (
+            <button
+              onClick={() => setShowAllTracks((prev) => !prev)}
+              className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer transition-colors"
+            >
+              <span>{showAllTracks ? "Show Less" : `Show All (${chartTracks.length})`}</span>
+              {showAllTracks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Track List Table */}
       <div className="space-y-1.5 relative">
-        {chartTracks.slice(0, 10).map((track, index) => {
+        {visibleTracks.map((track, index) => {
           const isThisTrackCurrent = currentTrack?._id === track._id;
           const isThisTrackPlaying = isThisTrackCurrent && isPlaying;
           const isMenuOpen = activeMenuTrackId === track._id;
@@ -98,25 +120,26 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
             <div
               key={track._id || index}
               onClick={() => handleRowClick(track)}
-              className={`group relative flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
+              className={`group flex items-center justify-between p-2.5 px-4 rounded-2xl cursor-pointer transition-all duration-200 relative ${
                 isThisTrackCurrent
-                  ? "bg-blue-600/15 border border-blue-500/25"
-                  : "hover:bg-[#181a26] border border-transparent"
+                  ? "bg-blue-600/15 border border-blue-500/30 shadow-md shadow-blue-500/10"
+                  : "bg-[#181a24]/60 hover:bg-[#1f2130] border border-white/5"
               }`}
             >
-              {/* Left: Rank / Equalizer + Thumbnail + Title/Artist */}
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-5 text-center flex items-center justify-center shrink-0">
+              {/* Left Column: Rank / Play & Artwork & Title */}
+              <div className="flex items-center gap-4 min-w-0 flex-1 pr-4">
+                {/* Rank number or Equalizer animation */}
+                <div className="w-6 text-center shrink-0">
                   {isThisTrackPlaying ? (
-                    <div className="flex items-end gap-0.5 h-3.5">
+                    <div className="flex items-end justify-center gap-[2px] h-3.5">
                       <span className="w-1 bg-blue-500 rounded-full animate-eq-1"></span>
                       <span className="w-1 bg-blue-500 rounded-full animate-eq-2"></span>
                       <span className="w-1 bg-blue-500 rounded-full animate-eq-3"></span>
                     </div>
                   ) : (
                     <span
-                      className={`text-xs font-semibold ${
-                        isThisTrackCurrent ? "text-blue-400 font-bold" : "text-gray-500"
+                      className={`text-xs font-mono font-bold ${
+                        isThisTrackCurrent ? "text-blue-400" : "text-gray-500"
                       }`}
                     >
                       {track.rank || String(index + 1).padStart(2, "0")}
@@ -124,7 +147,8 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
                   )}
                 </div>
 
-                <div className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 shadow-md bg-black/40">
+                {/* Album Cover with Play Overlay */}
+                <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#242738] shrink-0 border border-white/10 shadow-sm">
                   <img
                     src={track.coverArt || "https://via.placeholder.com/100"}
                     alt={track.title}
@@ -132,61 +156,68 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
                   />
                   <div
                     className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
-                      isThisTrackPlaying
-                        ? "opacity-100"
-                        : "opacity-0 group-hover:opacity-100"
+                      isThisTrackCurrent
+                        ? "opacity-100 text-blue-400"
+                        : "opacity-0 group-hover:opacity-100 text-white"
                     }`}
                   >
                     {isThisTrackPlaying ? (
-                      <Pause size={15} className="text-white" fill="white" />
+                      <Pause size={16} fill="currentColor" />
                     ) : (
-                      <Play size={15} className="text-white ml-0.5" fill="white" />
+                      <Play size={16} fill="currentColor" className="ml-0.5" />
                     )}
                   </div>
                 </div>
 
-                <div className="min-w-0">
+                {/* Title & Artist */}
+                <div className="min-w-0 flex-1">
                   <p
-                    className={`text-sm font-semibold truncate ${
-                      isThisTrackCurrent ? "text-blue-400 font-bold" : "text-white"
+                    className={`text-sm font-semibold truncate transition-colors ${
+                      isThisTrackCurrent
+                        ? "text-blue-400"
+                        : "text-white group-hover:text-blue-300"
                     }`}
                   >
                     {track.title}
                   </p>
                   <p className="text-xs text-gray-400 truncate mt-0.5">
-                    {artistName} {track.album ? `• ${track.album}` : ""}
+                    {artistName}
                   </p>
                 </div>
               </div>
 
-              {/* Right: Plays + Duration + Heart + Menu */}
-              <div className="flex items-center gap-4 shrink-0 relative">
-                <span className="text-xs text-gray-500 hidden sm:inline font-medium">
-                  {track.plays || "Popular"}
+              {/* Middle: Album Name */}
+              <div className="hidden md:block w-44 truncate text-xs text-gray-400 pr-4">
+                {track.album || "Single Track"}
+              </div>
+
+              {/* Middle: Plays Count */}
+              <div className="hidden lg:block w-28 text-right text-xs font-medium text-gray-400 font-mono pr-6">
+                {track.plays || "45M Plays"}
+              </div>
+
+              {/* Right Column: Duration, Heart & 3-Dots Menu */}
+              <div className="flex items-center gap-4 shrink-0">
+                <span className="text-xs font-mono text-gray-400 w-10 text-right">
+                  {track.duration
+                    ? `${Math.floor(track.duration / 60)}:${String(
+                        Math.floor(track.duration % 60)
+                      ).padStart(2, "0")}`
+                    : "3:30"}
                 </span>
 
-                <span className="text-[11px] text-gray-400 font-mono">
-                  {track.durationFormatted ||
-                    (track.duration
-                      ? `${Math.floor(track.duration / 60)}:${String(
-                          track.duration % 60
-                        ).padStart(2, "0")}`
-                      : "3:45")}
-                </span>
-
-                {/* Heart Button */}
+                {/* Favorite Heart Button */}
                 <button
-                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (toggleLike) toggleLike(track);
+                    toggleLike(track);
                   }}
-                  className={`transition-all active:scale-125 cursor-pointer p-1.5 rounded-lg hover:bg-white/5 ${
+                  className={`p-1.5 rounded-full transition-transform active:scale-75 cursor-pointer ${
                     trackIsLiked
-                      ? "text-red-500"
-                      : "text-gray-500 hover:text-red-400"
+                      ? "text-red-500 fill-red-500"
+                      : "text-gray-500 hover:text-white"
                   }`}
-                  title={trackIsLiked ? "Remove from Favorites" : "Add to Favorites"}
+                  title={trackIsLiked ? "Remove from Liked" : "Save to Liked"}
                 >
                   <Heart
                     size={16}
@@ -194,55 +225,58 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
                   />
                 </button>
 
-                {/* 3-Dots Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveMenuTrackId(isMenuOpen ? null : track._id);
-                  }}
-                  className="text-gray-500 hover:text-white transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/10"
-                  title="More actions"
-                >
-                  <MoreHorizontal size={15} />
-                </button>
-
-                {/* Floating Context Dropdown Menu */}
-                {isMenuOpen && (
-                  <div
-                    ref={menuRef}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute right-0 top-10 w-44 bg-[#1a1c28] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-fadeIn space-y-0.5"
+                {/* 3-Dots Menu Action */}
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveMenuTrackId(isMenuOpen ? null : track._id);
+                    }}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    title="More actions"
                   >
-                    <button
-                      onClick={(e) => handlePlayNext(e, track)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                    >
-                      <FastForward size={14} className="text-blue-400" />
-                      <span>Play Next</span>
-                    </button>
+                    <MoreHorizontal size={16} />
+                  </button>
 
-                    <button
-                      onClick={(e) => handleAddToQueue(e, track)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                  {/* Floating Action Menu Dropdown */}
+                  {isMenuOpen && (
+                    <div
+                      ref={menuRef}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute right-0 top-8 w-44 bg-[#1c1e2b] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-40 animate-fadeIn"
                     >
-                      <ListPlus size={14} className="text-emerald-400" />
-                      <span>Add to Queue</span>
-                    </button>
+                      <button
+                        onClick={(e) => handlePlayNext(e, track)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 rounded-xl cursor-pointer transition-colors"
+                      >
+                        <FastForward size={14} className="text-blue-400" />
+                        <span>Play Next</span>
+                      </button>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveMenuTrackId(null);
-                        if (onOpenAddToPlaylist) onOpenAddToPlaylist(track);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                    >
-                      <FolderPlus size={14} className="text-purple-400" />
-                      <span>Add to Playlist</span>
-                    </button>
-                  </div>
-                )}
+                      <button
+                        onClick={(e) => handleAddToQueue(e, track)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 rounded-xl cursor-pointer transition-colors"
+                      >
+                        <ListPlus size={14} className="text-purple-400" />
+                        <span>Add to Queue</span>
+                      </button>
+
+                      {onAddToPlaylist && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAddToPlaylist(track);
+                            setActiveMenuTrackId(null);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 rounded-xl cursor-pointer transition-colors"
+                        >
+                          <FolderPlus size={14} className="text-emerald-400" />
+                          <span>Add to Playlist</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

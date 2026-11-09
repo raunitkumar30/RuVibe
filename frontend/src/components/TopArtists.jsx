@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 
-export default function TopArtists({ onSelectArtist }) {
+export default function TopArtists({ onSelectArtist, onSeeAllArtists }) {
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,26 +58,39 @@ export default function TopArtists({ onSelectArtist }) {
     loadArtists();
   }, []);
 
+  const displayArtists = (artists.length > 0 ? artists : fallbackArtists).slice(0, 6);
+
   return (
     <section className="select-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold text-white tracking-wide">
-          Top Artists
-        </h2>
-        <span className="text-xs text-gray-400 font-medium">
-          Click artist to explore
-        </span>
+        <div>
+          <h2 className="text-base font-bold text-white tracking-wide">
+            Top Artists
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Click any artist to explore their hit tracks
+          </p>
+        </div>
+
+        {onSeeAllArtists && (
+          <button
+            onClick={onSeeAllArtists}
+            className="text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer transition-colors"
+          >
+            Explore All Artists →
+          </button>
+        )}
       </div>
 
       {/* Grid of Real Artist Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
-        {(artists.length > 0 ? artists : fallbackArtists).slice(0, 6).map((artist) => (
+        {displayArtists.map((artist) => (
           <div
             key={artist.name}
             onClick={() => onSelectArtist && onSelectArtist(artist.name)}
-            className="bg-[#181a24] hover:bg-[#1f2130] p-3.5 rounded-2xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/25 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group active:scale-95"
-            title={`View ${artist.name}`}
+            className="bg-[#181a24] hover:bg-[#1f2130] p-3.5 rounded-2xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/35 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group active:scale-95"
+            title={`Explore songs by ${artist.name}`}
           >
             {/* Real Artist Photo (Circular Portrait) */}
             <div className="w-20 h-20 rounded-full overflow-hidden mb-3 shadow-lg bg-[#222538] border border-white/10 shrink-0">

@@ -67,7 +67,7 @@ export default function App() {
     checkAuth();
   }, []);
 
-  // 2. Fetch all default tracks & sync to player queue
+  // 2. Fetch all default tracks (40+ songs) & sync to player queue
   const fetchAllTracks = async () => {
     setActiveFilter("");
     try {
@@ -168,10 +168,11 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentTrack, togglePlay, playNext, playPrevious, toggleMute, toggleLike]);
 
-  // 7. Filter by Keyword
+  // 7. Filter by Artist Name or Keyword directly in Explore
   const handleFilterMusic = async (filterKeyword) => {
     if (!filterKeyword) return;
     setActiveFilter(filterKeyword);
+    setCurrentView("explore");
     try {
       const res = await api.get(
         `/music/search?q=${encodeURIComponent(filterKeyword)}`
@@ -234,7 +235,6 @@ export default function App() {
     playNext();
   };
 
-  // Dynamic active tab name
   const activeCategory =
     currentView === "radio"
       ? "LIVE"
@@ -307,8 +307,8 @@ export default function App() {
           }}
           onFilterMusic={handleFilterMusic}
           onSelectArtist={(artist) => {
-            setSelectedArtist(artist);
-            setCurrentView("artist-profile");
+            const name = typeof artist === "object" ? artist.name : artist;
+            handleFilterMusic(name);
           }}
         />
 
@@ -335,15 +335,15 @@ export default function App() {
 
               <HeroBanner onPlayMusic={() => {}} />
 
-              {/* Dynamic Top Artists */}
+              {/* Dynamic Top Artists with Click-to-Explore */}
               <TopArtists
-                onSelectArtist={(artist) => {
-                  setSelectedArtist(artist);
-                  setCurrentView("artist-profile");
+                onSelectArtist={(artistName) => {
+                  handleFilterMusic(artistName);
                 }}
+                onSeeAllArtists={() => handleNavigateView("artists")}
               />
 
-              {/* Full-Width Top Charts */}
+              {/* Full-Width Top Charts with 44+ tracks and Show All toggle */}
               <div className="w-full">
                 <TopCharts
                   tracks={tracks}
@@ -374,8 +374,8 @@ export default function App() {
           {currentView === "artists" && (
             <ArtistsView
               onSelectArtist={(artist) => {
-                setSelectedArtist(artist);
-                setCurrentView("artist-profile");
+                const name = typeof artist === "object" ? artist.name : artist;
+                handleFilterMusic(name);
               }}
             />
           )}

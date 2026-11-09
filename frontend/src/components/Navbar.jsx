@@ -13,10 +13,16 @@ import {
   Mic,
   Radio,
   Users,
+  Check,
+  CheckCheck,
+  Trash2,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { usePlayerStore } from "../store/usePlayerStore";
+import { useToastStore } from "../store/useToastStore";
 
 export default function Navbar({
   onOpenAuth,
@@ -32,6 +38,37 @@ export default function Navbar({
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Notifications & Settings State
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [audioQuality, setAudioQuality] = useState("320"); // '160' | '320'
+  const [autoplayNext, setAutoplayNext] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState(3);
+
+  const notificationsList = [
+    {
+      id: 1,
+      title: "🔥 44+ Top Hits Available",
+      desc: "Chartbusters & Trending hits dynamically populated.",
+      time: "Just now",
+      tag: "Catalog",
+    },
+    {
+      id: 2,
+      title: "🌙 Sleep Timer Ready",
+      desc: "Set gentle timer directly from your player controls.",
+      time: "10m ago",
+      tag: "Feature",
+    },
+    {
+      id: 3,
+      title: "💎 Ultra HD 320kbps Audio",
+      desc: "High-definition lossless streaming active for all tracks.",
+      time: "1h ago",
+      tag: "Quality",
+    },
+  ];
+
   // Result Buckets
   const [songResults, setSongResults] = useState([]);
   const [artistResults, setArtistResults] = useState([]);
@@ -39,9 +76,12 @@ export default function Navbar({
   const [radioResults, setRadioResults] = useState([]);
 
   const searchContainerRef = useRef(null);
+  const notificationRef = useRef(null);
+  const settingsModalRef = useRef(null);
 
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { playTrack } = usePlayerStore();
+  const { playTrack, clearRecent } = usePlayerStore();
+  const { showToast } = useToastStore();
 
   const mainTabs = ["MUSIC", "PODCAST", "LIVE"];
   const currentTab = (activeCategory || currentCategory || "MUSIC").toUpperCase();
@@ -54,7 +94,7 @@ export default function Navbar({
     { id: "radio", label: "Radio", icon: Radio },
   ];
 
-  // 1. Debounced Live Search across all music sources
+  // 1. Debounced Live Search
   useEffect(() => {
     if (!searchTerm.trim()) {
       setSongResults([]);
@@ -129,11 +169,19 @@ export default function Navbar({
       ) {
         setShowDropdown(false);
       }
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(e.target)
+      ) {
+        setShowNotifications(false);
+      }
     }
 
     function handleKeyDown(e) {
       if (e.key === "Escape") {
         setShowDropdown(false);
+        setShowNotifications(false);
+        setShowSettings(false);
       }
     }
 
@@ -171,6 +219,12 @@ export default function Navbar({
       if (onFilterMusic) onFilterMusic(searchTerm.trim());
       setShowDropdown(false);
     }
+  };
+
+  const handleClearHistory = () => {
+    clearRecent();
+    showToast("Listening history cleared successfully", "info");
+    setShowSettings(false);
   };
 
   const hasResults =
@@ -456,8 +510,8 @@ export default function Navbar({
         )}
       </div>
 
-      {/* 3. Action Controls & Profile Pill */}
-      <div className="flex items-center gap-4">
+      {/* 3. Action Controls, Notifications, Settings & Profile Pill */}
+      <div className="flex items-center gap-3.5">
         {/* Artist Upload Track Button */}
         {isAuthenticated && user?.role === "artist" && (
           <button
@@ -470,11 +524,76 @@ export default function Navbar({
           </button>
         )}
 
-        <button className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1">
-          <Bell size={18} />
-        </button>
+        {/* Notifications Bell Dropdown */}
+        <div className="relative" ref={notificationRef}>
+          <button
+            onClick={() => {
+              setShowNotifications((prev) => !prev);
+              setShowSettings(false);
+            }}
+            className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-white/5 relative"
+            title="Notifications"
+          >
+            <Bell size={18} />
+            {unreadNotifications > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#11121a]"></span>
+            )}
+          </button>
 
-        <button className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1">
+          {/* Notifications Flyout Drawer */}
+          {showNotifications && (
+            <div className="absolute top-10 right-0 w-80 bg-[#181a24]/98 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-3 z-50 animate-fadeIn">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5 px-1">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Bell size={14} className="text-blue-400" />
+                  Notifications
+                </span>
+                {unreadNotifications > 0 && (
+                  <button
+                    onClick={() => {
+                      setUnreadNotifications(0);
+                      showToast("All notifications marked as read");
+                    }}
+                    className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {notificationsList.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-default"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-white">
+                        {item.title}
+                      </span>
+                      <span className="text-[9px] text-gray-500 font-mono">
+                        {item.time}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-300 leading-relaxed">
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Settings Button */}
+        <button
+          onClick={() => {
+            setShowSettings(true);
+            setShowNotifications(false);
+          }}
+          className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-white/5"
+          title="Settings"
+        >
           <Settings size={18} />
         </button>
 
@@ -510,6 +629,132 @@ export default function Navbar({
           </button>
         )}
       </div>
+
+      {/* 4. SETTINGS MODAL DIALOG */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div
+            ref={settingsModalRef}
+            className="w-full max-w-md bg-[#161722] border border-white/10 rounded-3xl p-6 shadow-2xl relative"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-500/15 text-blue-400">
+                  <Settings size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Groovvy Settings</h3>
+                  <p className="text-[11px] text-gray-400">Preferences & Audio</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              {/* Option 1: Audio Bitrate */}
+              <div>
+                <p className="text-xs font-bold text-white mb-1.5">Audio Streaming Bitrate</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setAudioQuality("160");
+                      showToast("Audio set to 160 kbps (Data Saver)");
+                    }}
+                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      audioQuality === "160"
+                        ? "border-blue-500 bg-blue-500/10 text-white"
+                        : "border-white/5 bg-white/5 text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    <p className="text-xs font-bold">160 kbps</p>
+                    <p className="text-[10px] text-gray-400">Standard / Mobile</p>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setAudioQuality("320");
+                      showToast("Audio set to 320 kbps Ultra HD Lossless");
+                    }}
+                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      audioQuality === "320"
+                        ? "border-blue-500 bg-blue-500/10 text-white"
+                        : "border-white/5 bg-white/5 text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold">320 kbps</p>
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-blue-500 text-white">
+                        HD
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-400">Studio Lossless</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 2: Autoplay toggle */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5">
+                <div>
+                  <p className="text-xs font-bold text-white">Autoplay Next Song</p>
+                  <p className="text-[10px] text-gray-400">
+                    Keep the music going when track ends
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAutoplayNext((prev) => !prev)}
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                    autoplayNext ? "bg-blue-600" : "bg-white/20"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                      autoplayNext ? "left-6" : "left-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Option 3: Keyboard Shortcuts Cheatsheet */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5">
+                <p className="text-xs font-bold text-white mb-2">Desktop Shortcuts</p>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-300">
+                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
+                    <span className="text-gray-400">Play / Pause</span>
+                    <span className="text-blue-400 font-bold">Space</span>
+                  </div>
+                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
+                    <span className="text-gray-400">Next Song</span>
+                    <span className="text-blue-400 font-bold">→</span>
+                  </div>
+                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
+                    <span className="text-gray-400">Mute Toggle</span>
+                    <span className="text-blue-400 font-bold">M</span>
+                  </div>
+                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
+                    <span className="text-gray-400">Full Screen</span>
+                    <span className="text-blue-400 font-bold">F</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 4: Clear Listening Cache */}
+              <button
+                onClick={handleClearHistory}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 cursor-pointer transition-colors"
+              >
+                <Trash2 size={14} />
+                <span>Clear Listening History</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
