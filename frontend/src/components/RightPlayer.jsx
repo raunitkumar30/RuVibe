@@ -14,10 +14,11 @@ import {
   VolumeX,
   X,
   Music,
+  Maximize2,
 } from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
 
-export default function RightPlayer({ onSeek }) {
+export default function RightPlayer({ onSeek, onOpenFullScreen }) {
   const {
     currentTrack,
     isPlaying,
@@ -117,7 +118,7 @@ export default function RightPlayer({ onSeek }) {
 
   return (
     <aside className="relative w-80 h-screen bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0 z-20">
-      {/* 1. Top Header */}
+      {/* 1. Top Header with Queue + Full Screen */}
       <div>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
@@ -126,25 +127,36 @@ export default function RightPlayer({ onSeek }) {
               Now Playing
             </h2>
           </div>
-          <button
-            onClick={() => {
-              setShowQueue((prev) => !prev);
-              setShowLyrics(false);
-            }}
-            title="Queue"
-            className={`p-1.5 rounded-xl transition-all cursor-pointer ${
-              showQueue
-                ? "text-blue-400 bg-blue-500/20"
-                : "text-gray-400 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            <ListMusic size={18} />
-          </button>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                setShowQueue((prev) => !prev);
+                setShowLyrics(false);
+              }}
+              title="Queue"
+              className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+                showQueue
+                  ? "text-blue-400 bg-blue-500/20"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <ListMusic size={18} />
+            </button>
+
+            {/* Full-Screen Ambient Mode Toggle */}
+            <button
+              onClick={onOpenFullScreen}
+              title="Full-Screen Mode (F)"
+              className="p-1.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+            >
+              <Maximize2 size={16} />
+            </button>
+          </div>
         </div>
 
         {/* 2. Large Album Art with Ambient Glow */}
         <div className="relative w-full aspect-square mb-6 group">
-          {/* Ambient Glow Reflection */}
           <div
             className="absolute inset-0 rounded-3xl blur-2xl opacity-40 scale-95 transition-opacity duration-700 pointer-events-none group-hover:opacity-60"
             style={{
@@ -154,7 +166,6 @@ export default function RightPlayer({ onSeek }) {
             }}
           />
 
-          {/* Actual Album Image */}
           <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-black/80 bg-[#181a24] border border-white/10">
             <img
               src={track.coverArt || "https://via.placeholder.com/600"}
@@ -247,7 +258,7 @@ export default function RightPlayer({ onSeek }) {
           {/* Big White Circular Play/Pause Button */}
           <button
             onClick={togglePlay}
-            className="w-13 h-13 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-2xl active:scale-90 transition-transform hover:scale-105 cursor-pointer"
+            className="w-13 h-13 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-2xl hover:scale-105 active:scale-90 transition-transform cursor-pointer"
           >
             {isPlaying ? (
               <Pause size={22} fill="currentColor" />

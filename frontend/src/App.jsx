@@ -25,6 +25,7 @@ import GenresView from "./components/GenresView";
 import LocalView from "./components/LocalView";
 import RadioView from "./components/RadioView";
 import PodcastView from "./components/PodcastView";
+import FullScreenPlayer from "./components/FullScreenPlayer";
 
 export default function App() {
   const audioRef = useRef(null);
@@ -34,6 +35,7 @@ export default function App() {
   const [playlistTrackToAdd, setPlaylistTrackToAdd] = useState(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isFullScreenOpen, setIsFullScreenOpen] = useState(false); // Full-Screen State
   const [tracks, setTracks] = useState([]);
   const [activeFilter, setActiveFilter] = useState("");
 
@@ -128,6 +130,11 @@ export default function App() {
       if ((e.key === "l" || e.key === "L") && currentTrack) {
         toggleLike(currentTrack);
       }
+
+      // F Key: Toggle Full Screen Ambient Mode
+      if (e.key === "f" || e.key === "F") {
+        setIsFullScreenOpen((prev) => !prev);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -204,6 +211,13 @@ export default function App() {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => playNext()}
+      />
+
+      {/* Full-Screen Ambient / Karaoke Player Modal */}
+      <FullScreenPlayer
+        isOpen={isFullScreenOpen}
+        onClose={() => setIsFullScreenOpen(false)}
+        onSeek={handleSeek}
       />
 
       {/* Floating Animated Toast Notification */}
@@ -348,7 +362,10 @@ export default function App() {
       </div>
 
       {/* COLUMN 3: Right Player Card */}
-      <RightPlayer onSeek={handleSeek} />
+      <RightPlayer
+        onSeek={handleSeek}
+        onOpenFullScreen={() => setIsFullScreenOpen(true)}
+      />
     </div>
   );
 }
