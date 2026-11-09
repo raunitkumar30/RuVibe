@@ -70,43 +70,46 @@ async function createAlbum(req, res) {
   });
 }
 
-// 3. 🌟 GET ALL MUSICS: 100% Dynamic Live Top Charts (50 Songs) + Local Uploads
+// 3. 🌟 GET ALL MUSICS: Dynamic Live Top Charts with Pagination (page, limit)
 async function getAllMusics(req, res) {
   try {
-    const localMusics = await musicModel
-      .find()
-      .limit(20)
-      .populate("artist", "username email");
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 15);
+    const skip = (page - 1) * limit;
 
-    let allTracks = [...localMusics];
+    let localMusics = [];
+    if (page === 1) {
+      localMusics = await musicModel
+        .find()
+        .limit(10)
+        .populate("artist", "username email");
+    }
 
-    // Fetch 50 real live charting tracks directly from official charts
+    let chartSongs = [];
     try {
-      const liveChartSongs = await fetchLiveTopCharts(50);
-      const existingTitles = new Set(
-        allTracks.map((t) => (t.title || "").toLowerCase().trim())
-      );
-      const uniqueLive = liveChartSongs.filter(
-        (t) => !existingTitles.has((t.title || "").toLowerCase().trim())
-      );
-      allTracks = [...allTracks, ...uniqueLive];
+      chartSongs = await fetchLiveTopCharts(page, limit);
     } catch (err) {
       console.warn("Live chart fetch error fallback:", err.message);
     }
 
-    // Format rank and plays count
-    const formatted = allTracks.map((track, i) => {
-      const playsCount = Math.max(20, Math.floor(98 - i * 1.5));
+    const combined = [...localMusics, ...chartSongs];
+
+    const formatted = combined.map((track, i) => {
+      const globalIndex = skip + i + 1;
+      const playsCount = Math.max(15, Math.floor(98 - (globalIndex - 1) * 1.2));
       return {
         ...(track.toObject ? track.toObject() : track),
-        rank: String(i + 1).padStart(2, "0"),
+        rank: String(globalIndex).padStart(2, "0"),
         plays: track.plays || `${playsCount}M Plays`,
       };
     });
 
     res.status(200).json({
       message: "All musics fetched successfully",
+      page,
+      limit,
       total: formatted.length,
+      hasMore: chartSongs.length === limit,
       musics: formatted,
     });
   } catch (error) {
@@ -115,13 +118,21 @@ async function getAllMusics(req, res) {
   }
 }
 
-// 4. 🌟 GET TOP ARTISTS: 100% Dynamic Live Artists with Official Follower Counts
+// 4. 🌟 GET TOP ARTISTS: Infinite Dynamic Artists with Search & Pagination (page, limit, q)
 async function getTopArtists(req, res) {
   try {
-    const artists = await fetchTopArtists();
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 18);
+    const q = req.query.q || "";
+
+    const result = await fetchTopArtists(page, limit, q);
     return res.status(200).json({
       message: "Top artists fetched successfully",
-      artists,
+      page,
+      limit,
+      artists: result.artists,
+      hasMore: result.hasMore,
+      total: result.total,
     });
   } catch (error) {
     console.error("Error fetching top artists:", error);

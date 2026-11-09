@@ -36,7 +36,12 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
+  
+  // Songs Pagination State
   const [tracks, setTracks] = useState([]);
+  const [songsPage, setSongsPage] = useState(1);
+  const [loadingMoreSongs, setLoadingMoreSongs] = useState(false);
+  const [hasMoreSongs, setHasMoreSongs] = useState(true);
   const [activeFilter, setActiveFilter] = useState("");
 
   const {
@@ -67,14 +72,16 @@ export default function App() {
     checkAuth();
   }, []);
 
-  // 2. Fetch all default tracks (40+ songs) & sync to player queue
+  // 2. Fetch Initial Songs (Page 1)
   const fetchAllTracks = async () => {
     setActiveFilter("");
+    setSongsPage(1);
     try {
-      const response = await api.get("/music");
+      const response = await api.get("/music?page=1&limit=15");
       if (response.data?.musics && response.data.musics.length > 0) {
         setTracks(response.data.musics);
         setQueue(response.data.musics);
+        setHasMoreSongs(response.data.hasMore ?? true);
       }
     } catch (err) {
       console.error("Could not fetch tracks:", err);
@@ -84,6 +91,36 @@ export default function App() {
   useEffect(() => {
     fetchAllTracks();
   }, [isAuthenticated]);
+
+  // Dynamic pagination: Load next batch of songs
+  const handleLoadMoreSongs = async () => {
+    if (loadingMoreSongs || !hasMoreSongs) return;
+    setLoadingMoreSongs(true);
+    const nextPage = songsPage + 1;
+
+    try {
+      const response = await api.get(`/music?page=${nextPage}&limit=15`);
+      const newSongs = response.data?.musics || [];
+
+      if (newSongs.length > 0) {
+        setTracks((prev) => {
+          const existingIds = new Set(prev.map((t) => t._id));
+          const uniqueNew = newSongs.filter((t) => !existingIds.has(t._id));
+          const updated = [...prev, ...uniqueNew];
+          usePlayerStore.setState({ queue: updated });
+          return updated;
+        });
+        setSongsPage(nextPage);
+        setHasMoreSongs(response.data.hasMore ?? newSongs.length >= 15);
+      } else {
+        setHasMoreSongs(false);
+      }
+    } catch (err) {
+      console.error("Load more tracks error:", err);
+    } finally {
+      setLoadingMoreSongs(false);
+    }
+  };
 
   // 3. Fetch user's liked songs whenever authenticated
   useEffect(() => {
@@ -335,7 +372,7 @@ export default function App() {
 
               <HeroBanner onPlayMusic={() => {}} />
 
-              {/* Dynamic Top Artists with Click-to-Explore */}
+              {/* Dynamic Top Artists with Pagination */}
               <TopArtists
                 onSelectArtist={(artistName) => {
                   handleFilterMusic(artistName);
@@ -343,13 +380,16 @@ export default function App() {
                 onSeeAllArtists={() => handleNavigateView("artists")}
               />
 
-              {/* Full-Width Top Charts with 44+ tracks and Show All toggle */}
+              {/* Dynamic Top Charts with Pagination */}
               <div className="w-full">
                 <TopCharts
                   tracks={tracks}
                   activeFilter={activeFilter}
                   onClearFilter={fetchAllTracks}
                   onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+                  onLoadMoreSongs={handleLoadMoreSongs}
+                  loadingMoreSongs={loadingMoreSongs}
+                  hasMoreSongs={hasMoreSongs}
                 />
               </div>
             </div>

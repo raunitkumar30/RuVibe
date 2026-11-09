@@ -1,7 +1,7 @@
 const axios = require("axios");
 const CryptoJS = require("crypto-js");
 
-// Read strictly from .env — zero hardcoded URLs or keys in source code
+// Read strictly from .env — zero hardcoded URLs or keys in code
 const JIOSAAVN_API_URL = process.env.JIOSAAVN_API_URL;
 const JIOSAAVN_DES_KEY = process.env.JIOSAAVN_DES_KEY;
 const ITUNES_API_URL = process.env.ITUNES_API_URL;
@@ -65,7 +65,7 @@ async function getTrackMetadata(trackTitle) {
 
     const song = res.data?.results?.[0];
     if (song) {
-      const coverArt = song.image ? song.image.replace("150x150", "500x500") : null;
+      const coverArt = song.image ? song.image.replace("150x150", "500x500").replace("50x50", "500x500") : null;
       return {
         coverArt,
         duration: Number(song.duration) || 210,
@@ -81,8 +81,8 @@ async function getTrackMetadata(trackTitle) {
   return null;
 }
 
-// 2. Search Global Full-Length Songs
-async function searchGlobalTracks(query, limit = 20) {
+// 2. Search Global Full-Length Songs with Pagination Support
+async function searchGlobalTracks(query, limit = 15, page = 1) {
   if (!query || query.trim() === "" || !JIOSAAVN_API_URL) return [];
 
   try {
@@ -94,7 +94,7 @@ async function searchGlobalTracks(query, limit = 20) {
         cc: "in",
         includeMetaTags: "1",
         q: query,
-        p: 1,
+        p: page,
         n: limit,
       },
       timeout: 6000,
@@ -109,7 +109,7 @@ async function searchGlobalTracks(query, limit = 20) {
           if (!fullAudioUrl) return null;
 
           const coverArt = item.image
-            ? item.image.replace("150x150", "500x500")
+            ? item.image.replace("150x150", "500x500").replace("50x50", "500x500")
             : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80";
 
           return {
@@ -134,7 +134,7 @@ async function searchGlobalTracks(query, limit = 20) {
 
   try {
     const itunesRes = await axios.get(ITUNES_API_URL, {
-      params: { term: query, entity: "song", limit },
+      params: { term: query, entity: "song", limit, offset: (page - 1) * limit },
       timeout: 5000,
     });
 
@@ -156,119 +156,206 @@ async function searchGlobalTracks(query, limit = 20) {
   }
 }
 
-// 3. 🌟 100% DYNAMIC LIVE TOP CHARTS (From Official Charts API)
-async function fetchLiveTopCharts(limit = 50) {
-  const now = Date.now();
-  if (cachedLiveCharts && now - lastChartCacheTime < 30 * 60 * 1000) {
-    return cachedLiveCharts.slice(0, limit);
-  }
+// 3. 🌟 100% DYNAMIC LIVE TOP CHARTS WITH PAGINATION (page, limit)
+async function fetchLiveTopCharts(page = 1, limit = 15) {
+  const skip = (page - 1) * limit;
 
-  if (!JIOSAAVN_API_URL) return [];
+  // Use the 50-track official superhits chart cache if within 50
+  if (skip < 50 && JIOSAAVN_API_URL) {
+    const now = Date.now();
+    try {
+      if (!cachedLiveCharts || now - lastChartCacheTime > 30 * 60 * 1000) {
+        const detailsRes = await axios.get(JIOSAAVN_API_URL, {
+          params: {
+            __call: "playlist.getDetails",
+            _format: "json",
+            _marker: "0",
+            listid: "1134548194",
+          },
+          timeout: 8000,
+        });
 
-  try {
-    const detailsRes = await axios.get(JIOSAAVN_API_URL, {
-      params: {
-        __call: "playlist.getDetails",
-        _format: "json",
-        _marker: "0",
-        listid: "1134548194",
-      },
-      timeout: 8000,
-    });
+        const songs = detailsRes.data?.songs || [];
+        if (Array.isArray(songs) && songs.length > 0) {
+          cachedLiveCharts = songs
+            .map((s, idx) => {
+              const fullAudioUrl = decryptJioSaavnUrl(s.encrypted_media_url);
+              if (!fullAudioUrl) return null;
 
-    const songs = detailsRes.data?.songs || [];
+              const coverArt = s.image
+                ? s.image.replace("150x150", "500x500").replace("50x50", "500x500")
+                : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80";
 
-    if (Array.isArray(songs) && songs.length > 0) {
-      const formatted = songs
-        .map((s, idx) => {
-          const fullAudioUrl = decryptJioSaavnUrl(s.encrypted_media_url);
-          if (!fullAudioUrl) return null;
-
-          const coverArt = s.image
-            ? s.image.replace("150x150", "500x500").replace("50x50", "500x500")
-            : "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80";
-
-          const playsCount = Math.max(25, Math.floor(98 - idx * 1.4));
-
-          return {
-            _id: `chart_${s.id || idx}`,
-            title: cleanHtml(s.song || s.title || "Top Hit"),
-            artist: cleanHtml(s.primary_artists || s.singers || s.artist || "Artist"),
-            album: cleanHtml(s.album || "Top Charts"),
-            coverArt,
-            uri: fullAudioUrl,
-            duration: Number(s.duration) || 215,
-            genre: (s.language || "Trending").toUpperCase(),
-            rank: String(idx + 1).padStart(2, "0"),
-            plays: `${playsCount}M Plays`,
-            isExternal: true,
-          };
-        })
-        .filter(Boolean);
-
-      if (formatted.length > 0) {
-        cachedLiveCharts = formatted;
-        lastChartCacheTime = now;
-        return formatted.slice(0, limit);
+              return {
+                _id: `chart_${s.id || idx}`,
+                title: cleanHtml(s.song || s.title || "Top Hit"),
+                artist: cleanHtml(s.primary_artists || s.singers || s.artist || "Artist"),
+                album: cleanHtml(s.album || "Top Charts"),
+                coverArt,
+                uri: fullAudioUrl,
+                duration: Number(s.duration) || 215,
+                genre: (s.language || "Trending").toUpperCase(),
+                isExternal: true,
+              };
+            })
+            .filter(Boolean);
+          lastChartCacheTime = now;
+        }
       }
+
+      if (cachedLiveCharts && cachedLiveCharts.length > 0) {
+        const sliced = cachedLiveCharts.slice(skip, skip + limit);
+        if (sliced.length > 0) return sliced;
+      }
+    } catch (err) {
+      console.warn("Live chart cache slice error:", err.message);
     }
-  } catch (err) {
-    console.error("Live chart fetch error:", err.message);
   }
 
-  return await searchGlobalTracks("Top Hits", limit);
+  // If page exceeds 50 or fallback required, query searchGlobalTracks with pagination
+  return await searchGlobalTracks("Top Hits", limit, page);
 }
 
-// 4. 🌟 100% DYNAMIC TOP ARTISTS (From Official Social Artists API)
-async function fetchTopArtists() {
-  const now = Date.now();
-  if (cachedTopArtists && now - lastArtistCacheTime < 60 * 60 * 1000) {
-    return cachedTopArtists;
+// 4. 🌟 INFINITE DYNAMIC ARTIST PAGINATION (No 30-artist limit!)
+async function fetchTopArtists(page = 1, limit = 12, query = "") {
+  if (!JIOSAAVN_API_URL) return { artists: [], total: 0, hasMore: false };
+
+  // A. If a specific search query is passed, search global artists dynamically
+  if (query && query.trim() !== "") {
+    try {
+      const searchRes = await axios.get(JIOSAAVN_API_URL, {
+        params: {
+          __call: "search.getArtistResults",
+          _format: "json",
+          _marker: "0",
+          cc: "in",
+          q: query.trim(),
+          p: page,
+          n: limit,
+        },
+        timeout: 6000,
+      });
+
+      const results = searchRes.data?.results || [];
+      const searchedArtists = results.map((item) => ({
+        id: item.id || `artist_${item.name}`,
+        name: cleanHtml(item.name),
+        genre: cleanHtml(item.role || "Verified Artist"),
+        plays: "Verified Artist",
+        monthlyListeners: "8,500,000+",
+        avatar: item.image
+          ? item.image.replace("150x150", "500x500").replace("50x50", "500x500")
+          : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
+      }));
+
+      return {
+        artists: searchedArtists,
+        total: 1000,
+        hasMore: searchedArtists.length === limit,
+      };
+    } catch (err) {
+      console.error("Artist query search error:", err.message);
+      return { artists: [], total: 0, hasMore: false };
+    }
   }
 
-  if (!JIOSAAVN_API_URL) return [];
+  // B. Infinite Catalog Rotation (Combining top superstars + multi-letter artist catalogs)
+  const skip = (page - 1) * limit;
+  const now = Date.now();
+
+  // Load and cache the initial 30 superstars
+  if (!cachedTopArtists || now - lastArtistCacheTime > 60 * 60 * 1000) {
+    try {
+      const res = await axios.get(JIOSAAVN_API_URL, {
+        params: {
+          __call: "social.getTopArtists",
+          _format: "json",
+          _marker: "0",
+        },
+        timeout: 6000,
+      });
+
+      const artists = res.data?.top_artists || [];
+      if (Array.isArray(artists) && artists.length > 0) {
+        cachedTopArtists = artists.map((item) => {
+          const followers = item.follower_count
+            ? `${(item.follower_count / 1000000).toFixed(1)}M Followers`
+            : "Trending Artist";
+
+          const highResAvatar = item.image
+            ? item.image.replace("150x150", "500x500").replace("50x50", "500x500")
+            : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
+
+          return {
+            id: item.artistid || `artist_${item.name}`,
+            name: item.name,
+            genre: "Top Verified Artist",
+            plays: followers,
+            monthlyListeners: item.follower_count ? item.follower_count.toLocaleString() : "10,000,000",
+            avatar: highResAvatar,
+          };
+        });
+        lastArtistCacheTime = now;
+      }
+    } catch (err) {
+      console.error("Live top artists fetch error:", err.message);
+    }
+  }
+
+  // For pages within the initial 30 artists:
+  if (cachedTopArtists && cachedTopArtists.length > 0 && skip < cachedTopArtists.length) {
+    const sliced = cachedTopArtists.slice(skip, skip + limit);
+    return {
+      artists: sliced,
+      total: 5000,
+      hasMore: true, // Always true to allow continuous loading!
+    };
+  }
+
+  // For subsequent pages (>30 artists): dynamically query rotating catalog categories
+  const seedTerms = [
+    "a", "k", "s", "m", "r", "b", "d", "t", "j", "n", "p", "l", "v", "y", "g", "h",
+    "singers", "bollywood", "punjabi", "pop", "hip hop", "classical"
+  ];
+  const termIndex = (page - 1) % seedTerms.length;
+  const term = seedTerms[termIndex];
+  const queryPage = Math.floor((page - 1) / seedTerms.length) + 1;
 
   try {
-    const res = await axios.get(JIOSAAVN_API_URL, {
+    const searchRes = await axios.get(JIOSAAVN_API_URL, {
       params: {
-        __call: "social.getTopArtists",
+        __call: "search.getArtistResults",
         _format: "json",
         _marker: "0",
+        cc: "in",
+        q: term,
+        p: queryPage,
+        n: limit,
       },
       timeout: 6000,
     });
 
-    const artists = res.data?.top_artists || [];
+    const results = searchRes.data?.results || [];
+    const dynamicArtists = results.map((item) => ({
+      id: item.id || `artist_${item.name}`,
+      name: cleanHtml(item.name),
+      genre: cleanHtml(item.role || "Verified Artist"),
+      plays: "Verified Artist",
+      monthlyListeners: "6,500,000+",
+      avatar: item.image
+        ? item.image.replace("150x150", "500x500").replace("50x50", "500x500")
+        : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
+    }));
 
-    if (Array.isArray(artists) && artists.length > 0) {
-      const formatted = artists.map((item) => {
-        const followers = item.follower_count
-          ? `${(item.follower_count / 1000000).toFixed(1)}M Followers`
-          : "Trending Artist";
-
-        const highResAvatar = item.image
-          ? item.image.replace("150x150", "500x500").replace("50x50", "500x500")
-          : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
-
-        return {
-          id: item.artistid || `artist_${item.name}`,
-          name: item.name,
-          genre: "Top Verified Artist",
-          plays: followers,
-          monthlyListeners: item.follower_count ? item.follower_count.toLocaleString() : "10,000,000",
-          avatar: highResAvatar,
-        };
-      });
-
-      cachedTopArtists = formatted;
-      lastArtistCacheTime = now;
-      return formatted;
-    }
+    return {
+      artists: dynamicArtists,
+      total: 5000,
+      hasMore: true, // Infinite loading enabled!
+    };
   } catch (err) {
-    console.error("Live top artists fetch error:", err.message);
+    console.warn("Dynamic artist page search error:", err.message);
+    return { artists: [], total: 0, hasMore: false };
   }
-
-  return [];
 }
 
 // 5. Search Podcasts

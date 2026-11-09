@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
-  Bell,
   Settings,
   LogOut,
   User as UserIcon,
@@ -13,11 +12,7 @@ import {
   Mic,
   Radio,
   Users,
-  Check,
-  CheckCheck,
   Trash2,
-  Sparkles,
-  Zap,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -38,36 +33,10 @@ export default function Navbar({
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Notifications & Settings State
-  const [showNotifications, setShowNotifications] = useState(false);
+  // Settings Modal State
   const [showSettings, setShowSettings] = useState(false);
-  const [audioQuality, setAudioQuality] = useState("320"); // '160' | '320'
+  const [audioQuality, setAudioQuality] = useState("320");
   const [autoplayNext, setAutoplayNext] = useState(true);
-  const [unreadNotifications, setUnreadNotifications] = useState(3);
-
-  const notificationsList = [
-    {
-      id: 1,
-      title: "🔥 44+ Top Hits Available",
-      desc: "Chartbusters & Trending hits dynamically populated.",
-      time: "Just now",
-      tag: "Catalog",
-    },
-    {
-      id: 2,
-      title: "🌙 Sleep Timer Ready",
-      desc: "Set gentle timer directly from your player controls.",
-      time: "10m ago",
-      tag: "Feature",
-    },
-    {
-      id: 3,
-      title: "💎 Ultra HD 320kbps Audio",
-      desc: "High-definition lossless streaming active for all tracks.",
-      time: "1h ago",
-      tag: "Quality",
-    },
-  ];
 
   // Result Buckets
   const [songResults, setSongResults] = useState([]);
@@ -76,7 +45,6 @@ export default function Navbar({
   const [radioResults, setRadioResults] = useState([]);
 
   const searchContainerRef = useRef(null);
-  const notificationRef = useRef(null);
   const settingsModalRef = useRef(null);
 
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -169,18 +137,11 @@ export default function Navbar({
       ) {
         setShowDropdown(false);
       }
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(e.target)
-      ) {
-        setShowNotifications(false);
-      }
     }
 
     function handleKeyDown(e) {
       if (e.key === "Escape") {
         setShowDropdown(false);
-        setShowNotifications(false);
         setShowSettings(false);
       }
     }
@@ -510,7 +471,7 @@ export default function Navbar({
         )}
       </div>
 
-      {/* 3. Action Controls, Notifications, Settings & Profile Pill */}
+      {/* 3. Action Controls: Settings & Profile Pill (No fake notification bell) */}
       <div className="flex items-center gap-3.5">
         {/* Artist Upload Track Button */}
         {isAuthenticated && user?.role === "artist" && (
@@ -524,73 +485,9 @@ export default function Navbar({
           </button>
         )}
 
-        {/* Notifications Bell Dropdown */}
-        <div className="relative" ref={notificationRef}>
-          <button
-            onClick={() => {
-              setShowNotifications((prev) => !prev);
-              setShowSettings(false);
-            }}
-            className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-white/5 relative"
-            title="Notifications"
-          >
-            <Bell size={18} />
-            {unreadNotifications > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#11121a]"></span>
-            )}
-          </button>
-
-          {/* Notifications Flyout Drawer */}
-          {showNotifications && (
-            <div className="absolute top-10 right-0 w-80 bg-[#181a24]/98 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-3 z-50 animate-fadeIn">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5 px-1">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Bell size={14} className="text-blue-400" />
-                  Notifications
-                </span>
-                {unreadNotifications > 0 && (
-                  <button
-                    onClick={() => {
-                      setUnreadNotifications(0);
-                      showToast("All notifications marked as read");
-                    }}
-                    className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
-                  >
-                    Mark all read
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {notificationsList.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-default"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-white">
-                        {item.title}
-                      </span>
-                      <span className="text-[9px] text-gray-500 font-mono">
-                        {item.time}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-gray-300 leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Settings Button */}
         <button
-          onClick={() => {
-            setShowSettings(true);
-            setShowNotifications(false);
-          }}
+          onClick={() => setShowSettings(true)}
           className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-white/5"
           title="Settings"
         >

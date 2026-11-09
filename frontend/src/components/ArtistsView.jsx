@@ -11,6 +11,7 @@ import {
   UserPlus,
   Check,
   Search,
+  Plus,
 } from "lucide-react";
 import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
@@ -19,22 +20,28 @@ import { useFavoritesStore } from "../store/useFavoritesStore";
 export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [artistsList, setArtistsList] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loadingArtists, setLoadingArtists] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
   const [artistTracks, setArtistTracks] = useState([]);
   const [loadingTracks, setLoadingTracks] = useState(false);
-  const [loadingArtists, setLoadingArtists] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
 
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { toggleLike, isLiked } = useFavoritesStore();
 
-  // 1. Fetch real top artists from backend on mount
+  // 1. Initial Page 1 load (18 artists)
   useEffect(() => {
-    async function loadArtists() {
+    async function loadInitialArtists() {
+      setLoadingArtists(true);
       try {
-        const res = await api.get("/music/top-artists");
+        const res = await api.get("/music/top-artists?page=1&limit=18");
         const list = res.data?.artists || [];
         setArtistsList(list);
+        setHasMore(res.data?.hasMore ?? true);
 
         if (initialArtist) {
           const match = list.find(
@@ -43,7 +50,7 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
           setSelectedArtist(
             match || {
               name: initialArtist,
-              monthlyListeners: "75,000,000",
+              monthlyListeners: "85,000,000",
               genre: "Popular Artist",
               avatar:
                 "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
@@ -57,10 +64,65 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
       }
     }
 
-    loadArtists();
+    loadInitialArtists();
   }, [initialArtist]);
 
-  // 2. Fetch full hit songs for the selected artist
+  // 2. Debounced Live Search for any artist across the entire global catalog
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+
+    const timer = setTimeout(async () => {
+      setLoadingArtists(true);
+      try {
+        const res = await api.get(
+          `/music/top-artists?q=${encodeURIComponent(searchQuery.trim())}&page=1&limit=18`
+        );
+        setArtistsList(res.data?.artists || []);
+        setHasMore(res.data?.hasMore ?? false);
+        setPage(1);
+      } catch (err) {
+        console.error("Live artist search failed:", err);
+      } finally {
+        setLoadingArtists(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // 3. Infinite Load More Artists (Pages 2, 3, 4...)
+  const handleLoadMoreArtists = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const endpoint = searchQuery.trim()
+        ? `/music/top-artists?q=${encodeURIComponent(searchQuery.trim())}&page=${nextPage}&limit=18`
+        : `/music/top-artists?page=${nextPage}&limit=18`;
+
+      const res = await api.get(endpoint);
+      const newArtists = res.data?.artists || [];
+
+      if (newArtists.length > 0) {
+        setArtistsList((prev) => {
+          const existingIds = new Set(prev.map((a) => a.id || a.name));
+          const uniqueNew = newArtists.filter((a) => !existingIds.has(a.id || a.name));
+          return [...prev, ...uniqueNew];
+        });
+        setPage(nextPage);
+        setHasMore(res.data?.hasMore ?? true);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error loading more artists:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // 4. Fetch full hit songs for selected artist
   useEffect(() => {
     if (!selectedArtist) return;
 
@@ -102,10 +164,6 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
       playTrack(artistTracks[0], artistTracks);
     }
   };
-
-  const filteredArtists = artistsList.filter((a) =>
-    a.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   // ──────────────────────────────────────────────
   // VIEW B: SINGLE VERIFIED ARTIST PAGE
@@ -156,7 +214,7 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
               </h1>
 
               <p className="text-sm font-semibold text-gray-300">
-                {selectedArtist.monthlyListeners || "75,000,000"} monthly listeners
+                {selectedArtist.monthlyListeners || "85,000,000"} monthly listeners
                 {selectedArtist.genre && (
                   <span className="text-gray-500 font-normal">
                     {" "}• {selectedArtist.genre}
@@ -231,7 +289,6 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
                         : "hover:bg-white/5 text-gray-300"
                     }`}
                   >
-                    {/* Index or Pause */}
                     <div className="col-span-1 text-center text-xs text-gray-500">
                       {isCurrent && isPlaying ? (
                         <Pause
@@ -243,7 +300,6 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
                       )}
                     </div>
 
-                    {/* Artwork + Title */}
                     <div className="col-span-7 flex items-center gap-3 min-w-0 pr-2">
                       <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#242738] shrink-0">
                         <img
@@ -269,12 +325,10 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
                       </div>
                     </div>
 
-                    {/* Duration */}
                     <div className="col-span-2 text-right text-xs text-gray-400 hidden sm:block">
                       {formatDuration(song.duration)}
                     </div>
 
-                    {/* Heart + Add to Playlist */}
                     <div className="col-span-4 sm:col-span-2 flex items-center justify-end gap-2">
                       <button
                         onClick={(e) => {
@@ -316,34 +370,37 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
   }
 
   // ──────────────────────────────────────────────
-  // VIEW A: REAL ARTISTS EXPLORER
+  // VIEW A: INFINITE REAL ARTISTS EXPLORER
   // ──────────────────────────────────────────────
   return (
     <div className="space-y-6 select-none animate-fadeIn">
-      {/* Header & Search */}
+      {/* Header & Global Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
             <Mic2 size={26} className="text-blue-500" />
             Top Artists
+            <span className="text-xs font-mono font-medium text-gray-500">
+              ({artistsList.length} artists loaded)
+            </span>
           </h2>
           <p className="text-xs text-gray-400 mt-1">
             Explore world-renowned artists, their discographies, and top streams.
           </p>
         </div>
 
-        {/* Search Artists Box */}
-        <div className="relative w-full sm:w-64">
+        {/* Global Live Search Artists Box */}
+        <div className="relative w-full sm:w-72">
           <Search
             size={16}
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
           />
           <input
             type="text"
-            placeholder="Search artists..."
+            placeholder="Search any artist worldwide..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#181a24] text-xs text-white placeholder-gray-500 pl-10 pr-4 py-2.5 rounded-2xl border border-white/5 focus:outline-none focus:border-blue-500/50"
+            className="w-full bg-[#181a24] text-xs text-white placeholder-gray-500 pl-10 pr-4 py-2.5 rounded-2xl border border-white/5 focus:outline-none focus:border-blue-500/50 shadow-inner"
           />
         </div>
       </div>
@@ -354,43 +411,68 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
           <span className="text-xs">Loading artists...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
-          {filteredArtists.map((artist) => (
-            <div
-              key={artist.name}
-              onClick={() => setSelectedArtist(artist)}
-              className="group bg-[#181a24] hover:bg-[#1f2130] p-4 rounded-3xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/30 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95 shadow-md"
-            >
-              {/* Real Circular Portrait */}
-              <div className="relative w-28 h-28 rounded-full overflow-hidden mb-3 shadow-lg bg-[#222538] border border-white/10">
-                <img
-                  src={artist.avatar}
-                  alt={artist.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onError={(e) => {
-                    e.target.src =
-                      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
-                  }}
-                />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
-                    <Play size={16} fill="currentColor" className="ml-0.5" />
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+            {artistsList.map((artist) => (
+              <div
+                key={artist.id || artist.name}
+                onClick={() => setSelectedArtist(artist)}
+                className="group bg-[#181a24] hover:bg-[#1f2130] p-4 rounded-3xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/30 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95 shadow-md animate-fadeIn"
+              >
+                {/* Real Circular Portrait */}
+                <div className="relative w-28 h-28 rounded-full overflow-hidden mb-3 shadow-lg bg-[#222538] border border-white/10">
+                  <img
+                    src={artist.avatar}
+                    alt={artist.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      e.target.src =
+                        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
+                      <Play size={16} fill="currentColor" className="ml-0.5" />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <p className="text-sm font-bold text-white truncate w-full group-hover:text-blue-400 transition-colors">
-                {artist.name}
-              </p>
-              <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                {artist.genre}
-              </p>
-              <span className="text-[10px] text-gray-500 mt-1">
-                {artist.monthlyListeners || "Popular Artist"}
-              </span>
+                <p className="text-sm font-bold text-white truncate w-full group-hover:text-blue-400 transition-colors">
+                  {artist.name}
+                </p>
+                <p className="text-[11px] text-gray-400 font-medium mt-0.5 truncate w-full">
+                  {artist.genre}
+                </p>
+                <span className="text-[10px] text-gray-500 mt-1 truncate w-full">
+                  {artist.plays || artist.monthlyListeners || "Verified Artist"}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Infinite Dynamic Load More Artists Button */}
+          {hasMore && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={handleLoadMoreArtists}
+                disabled={loadingMore}
+                className="flex items-center gap-2 px-7 py-3 rounded-2xl bg-white/5 hover:bg-blue-600/20 text-xs font-bold text-gray-300 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin text-blue-400" />
+                    <span>Loading more artists...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={14} className="text-blue-400" />
+                    <span>Load More Artists</span>
+                  </>
+                )}
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

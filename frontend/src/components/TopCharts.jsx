@@ -7,8 +7,8 @@ import {
   ListPlus,
   FastForward,
   FolderPlus,
-  ChevronDown,
-  ChevronUp,
+  Loader2,
+  Plus,
 } from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useFavoritesStore } from "../store/useFavoritesStore";
@@ -19,6 +19,9 @@ export default function TopCharts({
   activeFilter,
   onClearFilter,
   onAddToPlaylist,
+  onLoadMoreSongs,
+  loadingMoreSongs = false,
+  hasMoreSongs = true,
 }) {
   const {
     currentTrack,
@@ -33,11 +36,9 @@ export default function TopCharts({
   const { showToast } = useToastStore();
 
   const [activeMenuTrackId, setActiveMenuTrackId] = useState(null);
-  const [showAllTracks, setShowAllTracks] = useState(false);
   const menuRef = useRef(null);
 
   const chartTracks = tracks && tracks.length > 0 ? tracks : [];
-  const visibleTracks = showAllTracks ? chartTracks : chartTracks.slice(0, 15);
 
   // Close floating menu when clicking outside
   useEffect(() => {
@@ -82,29 +83,18 @@ export default function TopCharts({
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
             {activeFilter
-              ? "All matching songs available to stream in full"
+              ? "All matching tracks available to stream in full"
               : "The most played songs right now"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400 font-medium font-mono">
-            {chartTracks.length} tracks loaded
-          </span>
-          {chartTracks.length > 15 && (
-            <button
-              onClick={() => setShowAllTracks((prev) => !prev)}
-              className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer transition-colors"
-            >
-              <span>{showAllTracks ? "Show Less" : `Show All (${chartTracks.length})`}</span>
-              {showAllTracks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-          )}
-        </div>
+        <span className="text-xs text-gray-400 font-medium font-mono">
+          {chartTracks.length} tracks loaded
+        </span>
       </div>
 
       {/* Track List Table */}
       <div className="space-y-1.5 relative">
-        {visibleTracks.map((track, index) => {
+        {chartTracks.map((track, index) => {
           const isThisTrackCurrent = currentTrack?._id === track._id;
           const isThisTrackPlaying = isThisTrackCurrent && isPlaying;
           const isMenuOpen = activeMenuTrackId === track._id;
@@ -128,7 +118,6 @@ export default function TopCharts({
             >
               {/* Left Column: Rank / Play & Artwork & Title */}
               <div className="flex items-center gap-4 min-w-0 flex-1 pr-4">
-                {/* Rank number or Equalizer animation */}
                 <div className="w-6 text-center shrink-0">
                   {isThisTrackPlaying ? (
                     <div className="flex items-end justify-center gap-[2px] h-3.5">
@@ -147,7 +136,6 @@ export default function TopCharts({
                   )}
                 </div>
 
-                {/* Album Cover with Play Overlay */}
                 <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#242738] shrink-0 border border-white/10 shadow-sm">
                   <img
                     src={track.coverArt || "https://via.placeholder.com/100"}
@@ -169,7 +157,6 @@ export default function TopCharts({
                   </div>
                 </div>
 
-                {/* Title & Artist */}
                 <div className="min-w-0 flex-1">
                   <p
                     className={`text-sm font-semibold truncate transition-colors ${
@@ -206,7 +193,6 @@ export default function TopCharts({
                     : "3:30"}
                 </span>
 
-                {/* Favorite Heart Button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -225,7 +211,6 @@ export default function TopCharts({
                   />
                 </button>
 
-                {/* 3-Dots Menu Action */}
                 <div className="relative">
                   <button
                     onClick={(e) => {
@@ -238,7 +223,6 @@ export default function TopCharts({
                     <MoreHorizontal size={16} />
                   </button>
 
-                  {/* Floating Action Menu Dropdown */}
                   {isMenuOpen && (
                     <div
                       ref={menuRef}
@@ -282,6 +266,29 @@ export default function TopCharts({
           );
         })}
       </div>
+
+      {/* Dynamic Load More Songs Button */}
+      {onLoadMoreSongs && !activeFilter && hasMoreSongs && (
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={onLoadMoreSongs}
+            disabled={loadingMoreSongs}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-white/5 hover:bg-blue-600/20 text-xs font-bold text-gray-300 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            {loadingMoreSongs ? (
+              <>
+                <Loader2 size={14} className="animate-spin text-blue-400" />
+                <span>Loading more chart tracks...</span>
+              </>
+            ) : (
+              <>
+                <Plus size={14} className="text-blue-400" />
+                <span>Load More Songs</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

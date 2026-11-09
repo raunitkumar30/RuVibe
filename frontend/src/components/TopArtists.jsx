@@ -1,75 +1,74 @@
 import React, { useEffect, useState } from "react";
+import { Loader2, Plus, Sparkles } from "lucide-react";
 import api from "../api/axios";
 
 export default function TopArtists({ onSelectArtist, onSeeAllArtists }) {
   const [artists, setArtists] = useState([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-  // Fallback with real artist photos
-  const fallbackArtists = [
-    {
-      name: "Arijit Singh",
-      plays: "185M Plays",
-      avatar: "https://c.saavncdn.com/artists/Arijit_Singh_004_20241118063717_500x500.jpg",
-    },
-    {
-      name: "The Weeknd",
-      plays: "162M Plays",
-      avatar: "https://c.saavncdn.com/artists/The_Weeknd_002_20241003071400_500x500.jpg",
-    },
-    {
-      name: "Diljit Dosanjh",
-      plays: "128M Plays",
-      avatar: "https://c.saavncdn.com/artists/Diljit_Dosanjh_005_20231025073054_500x500.jpg",
-    },
-    {
-      name: "Taylor Swift",
-      plays: "190M Plays",
-      avatar: "https://c.saavncdn.com/artists/Taylor_Swift_003_20200226074119_500x500.jpg",
-    },
-    {
-      name: "Drake",
-      plays: "145M Plays",
-      avatar: "https://c.saavncdn.com/artists/Drake_006_20260520062317_500x500.jpg",
-    },
-    {
-      name: "Shreya Ghoshal",
-      plays: "115M Plays",
-      avatar: "https://c.saavncdn.com/artists/Shreya_Ghoshal_007_20241101074144_500x500.jpg",
-    },
-  ];
-
+  // Initial load: page 1 (6 artists)
   useEffect(() => {
-    async function loadArtists() {
+    async function loadInitialArtists() {
+      setLoading(true);
       try {
-        const res = await api.get("/music/top-artists");
-        if (res.data?.artists && res.data.artists.length > 0) {
-          setArtists(res.data.artists);
-        } else {
-          setArtists(fallbackArtists);
-        }
-      } catch {
-        setArtists(fallbackArtists);
+        const res = await api.get("/music/top-artists?page=1&limit=6");
+        const list = res.data?.artists || [];
+        setArtists(list);
+        setHasMore(res.data?.hasMore ?? list.length >= 6);
+      } catch (err) {
+        console.error("Failed to load top artists:", err);
       } finally {
         setLoading(false);
       }
     }
 
-    loadArtists();
+    loadInitialArtists();
   }, []);
 
-  const displayArtists = (artists.length > 0 ? artists : fallbackArtists).slice(0, 6);
+  // Dynamically load more artists and append to grid
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const res = await api.get(`/music/top-artists?page=${nextPage}&limit=6`);
+      const newArtists = res.data?.artists || [];
+
+      if (newArtists.length > 0) {
+        setArtists((prev) => {
+          const existingIds = new Set(prev.map((a) => a.id || a.name));
+          const uniqueNew = newArtists.filter((a) => !existingIds.has(a.id || a.name));
+          return [...prev, ...uniqueNew];
+        });
+        setPage(nextPage);
+        setHasMore(res.data?.hasMore ?? newArtists.length >= 6);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error loading more artists:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <section className="select-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-base font-bold text-white tracking-wide">
+          <h2 className="text-base font-bold text-white tracking-wide flex items-center gap-2">
             Top Artists
+            <span className="text-[11px] font-mono font-medium text-gray-500">
+              ({artists.length} loaded)
+            </span>
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Click any artist to explore their hit tracks
+            Click any artist to explore their hits
           </p>
         </div>
 
@@ -85,11 +84,11 @@ export default function TopArtists({ onSelectArtist, onSeeAllArtists }) {
 
       {/* Grid of Real Artist Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
-        {displayArtists.map((artist) => (
+        {artists.map((artist) => (
           <div
-            key={artist.name}
+            key={artist.id || artist.name}
             onClick={() => onSelectArtist && onSelectArtist(artist.name)}
-            className="bg-[#181a24] hover:bg-[#1f2130] p-3.5 rounded-2xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/35 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group active:scale-95"
+            className="bg-[#181a24] hover:bg-[#1f2130] p-3.5 rounded-2xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/35 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group active:scale-95 animate-fadeIn"
             title={`Explore songs by ${artist.name}`}
           >
             {/* Real Artist Photo (Circular Portrait) */}
@@ -115,6 +114,29 @@ export default function TopArtists({ onSelectArtist, onSeeAllArtists }) {
           </div>
         ))}
       </div>
+
+      {/* Dynamic Load More Artists Button */}
+      {hasMore && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300 hover:text-white border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 size={13} className="animate-spin text-blue-400" />
+                <span>Loading more artists...</span>
+              </>
+            ) : (
+              <>
+                <Plus size={13} className="text-blue-400" />
+                <span>Load More Artists</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
