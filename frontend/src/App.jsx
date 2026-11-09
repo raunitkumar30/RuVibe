@@ -11,7 +11,6 @@ import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import HeroBanner from "./components/HeroBanner";
 import TopArtists from "./components/TopArtists";
-import GenresGrid from "./components/GenresGrid";
 import TopCharts from "./components/TopCharts";
 import RightPlayer from "./components/RightPlayer";
 import AuthModal from "./components/AuthModal";
@@ -70,8 +69,8 @@ export default function App() {
         setTracks(response.data.musics);
         setQueue(response.data.musics);
       }
-    } catch {
-      console.log("Using demo tracks until user logs in or uploads songs.");
+    } catch (err) {
+      console.error("Could not fetch tracks:", err);
     }
   };
 
@@ -135,7 +134,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentTrack, togglePlay, playNext, playPrevious, toggleMute, toggleLike]);
 
-  // 6. Filter by Genre or Keyword
+  // 6. Filter by Keyword
   const handleFilterMusic = async (filterKeyword) => {
     if (!filterKeyword) return;
     setActiveFilter(filterKeyword);
@@ -190,7 +189,6 @@ export default function App() {
     }
   };
 
-  // Determine current active category tab in Navbar
   const activeCategory =
     currentView === "radio"
       ? "LIVE"
@@ -290,7 +288,7 @@ export default function App() {
               onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
             />
           ) : currentView === "genres" ? (
-            /* View E: Full Genres & Moods Screen */
+            /* View E: Full Dedicated Genres & Moods Screen */
             <GenresView
               onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
             />
@@ -328,7 +326,8 @@ export default function App() {
                 </div>
               )}
 
-              <HeroBanner featuredTrack={tracks[0]} />
+              {/* Hero Banner */}
+              <HeroBanner featuredTrack={tracks[0]} allTracks={tracks} />
 
               {/* Interactive Top Artists */}
               <TopArtists
@@ -338,17 +337,11 @@ export default function App() {
                 }}
               />
 
-              {/* Interactive Genres & Top Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                <GenresGrid
-                  onSelectGenre={handleFilterMusic}
-                  onSeeAll={() => setCurrentView("genres")}
-                />
-                <TopCharts
-                  tracks={tracks}
-                  onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-                />
-              </div>
+              {/* Spacious Full-Width Top Charts */}
+              <TopCharts
+                tracks={tracks}
+                onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+              />
             </>
           )}
         </main>
