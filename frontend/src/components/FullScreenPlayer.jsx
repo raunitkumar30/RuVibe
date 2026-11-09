@@ -86,7 +86,7 @@ export default function FullScreenPlayer({ isOpen, onClose, onSeek }) {
         }
       } catch {
         if (isMounted) {
-          setLyrics(`♪ Now Playing: ${track.title} ♪\n\nSing along and enjoy the groove!`);
+          setLyrics(`♪ Now Playing: ${track.title} ♪\n\nSing along and feel the RuVibe!`);
         }
       } finally {
         if (isMounted) setLoadingLyrics(false);

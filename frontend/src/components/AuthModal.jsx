@@ -55,7 +55,7 @@ export default function AuthModal({ isOpen, onClose }) {
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 text-gray-400 hover:text-white transition-colors"
+          className="absolute right-5 top-5 text-gray-400 hover:text-white transition-colors cursor-pointer"
         >
           <X size={20} />
         </button>
@@ -63,7 +63,7 @@ export default function AuthModal({ isOpen, onClose }) {
         {/* Header */}
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-white tracking-tight">
-            {isRegister ? "Join Groovvy" : "Welcome Back"}
+            {isRegister ? "Join RuVibe" : "Welcome Back"}
           </h2>
           <p className="text-xs text-gray-400 mt-1">
             {isRegister
@@ -140,7 +140,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={() => setRole("user")}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all ${
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                     role === "user"
                       ? "bg-blue-600/20 border-blue-500 text-blue-400"
                       : "bg-[#1e202e] border-white/5 text-gray-400 hover:text-white"
@@ -153,7 +153,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={() => setRole("artist")}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all ${
+                  className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                     role === "artist"
                       ? "bg-blue-600/20 border-blue-500 text-blue-400"
                       : "bg-[#1e202e] border-white/5 text-gray-400 hover:text-white"
@@ -191,7 +191,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   setIsRegister(false);
                   setLocalError("");
                 }}
-                className="text-blue-400 hover:underline font-semibold ml-1"
+                className="text-blue-400 hover:underline font-semibold ml-1 cursor-pointer"
               >
                 Sign In
               </button>
@@ -205,7 +205,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   setIsRegister(true);
                   setLocalError("");
                 }}
-                className="text-blue-400 hover:underline font-semibold ml-1"
+                className="text-blue-400 hover:underline font-semibold ml-1 cursor-pointer"
               >
                 Sign Up
               </button>

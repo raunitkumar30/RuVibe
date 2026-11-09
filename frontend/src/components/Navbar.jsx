@@ -196,7 +196,7 @@ export default function Navbar({
 
   return (
     <header className="h-20 px-8 flex items-center justify-between bg-transparent select-none shrink-0 relative z-40 border-b border-white/5">
-      {/* 1. Category Switcher with Animated Glowing Blue Indicator */}
+      {/* 1. Category Switcher */}
       <div className="flex items-center gap-7">
         {mainTabs.map((tab) => {
           const isActive = currentTab === tab;
@@ -471,14 +471,14 @@ export default function Navbar({
         )}
       </div>
 
-      {/* 3. Action Controls: Settings & Profile Pill (No fake notification bell) */}
+      {/* 3. Action Controls: Settings & Profile Pill */}
       <div className="flex items-center gap-3.5">
         {/* Artist Upload Track Button */}
         {isAuthenticated && user?.role === "artist" && (
           <button
             onClick={onOpenUpload}
             className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md shadow-blue-500/20 transition-all active:scale-95 cursor-pointer"
-            title="Upload your track to Groovvy"
+            title="Upload your track to RuVibe"
           >
             <Upload size={14} />
             <span className="hidden sm:inline">Upload Track</span>
@@ -541,7 +541,7 @@ export default function Navbar({
                   <Settings size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Groovvy Settings</h3>
+                  <h3 className="text-sm font-bold text-white">RuVibe Settings</h3>
                   <p className="text-[11px] text-gray-400">Preferences & Audio</p>
                 </div>
               </div>

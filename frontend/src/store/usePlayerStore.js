@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 const getSavedRecent = () => {
   try {
-    const saved = localStorage.getItem("groovvy_recent");
+    const saved = localStorage.getItem("ruvibe_recent");
     return saved ? JSON.parse(saved) : [];
   } catch {
     return [];
@@ -32,7 +32,7 @@ export const usePlayerStore = create((set, get) => ({
     const current = get().recentlyPlayed || [];
     const updated = [track, ...current.filter((t) => t._id !== track._id)].slice(0, 30);
     try {
-      localStorage.setItem("groovvy_recent", JSON.stringify(updated));
+      localStorage.setItem("ruvibe_recent", JSON.stringify(updated));
     } catch (e) {
       console.warn("Could not save to localStorage", e);
     }
@@ -40,7 +40,7 @@ export const usePlayerStore = create((set, get) => ({
   },
 
   clearRecent: () => {
-    localStorage.removeItem("groovvy_recent");
+    localStorage.removeItem("ruvibe_recent");
     set({ recentlyPlayed: [] });
   },
 
@@ -146,7 +146,7 @@ export const usePlayerStore = create((set, get) => ({
     set({ playbackRate: rate });
   },
 
-  // 🌙 7. Sleep Timer Controls
+  // 7. Sleep Timer Controls
   setSleepTimer: (option) => {
     if (option === "end_of_track") {
       set({ sleepTimer: "end_of_track", sleepTimerRemaining: null });

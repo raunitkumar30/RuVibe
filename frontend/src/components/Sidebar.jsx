@@ -35,10 +35,8 @@ export default function Sidebar({
   const { isAuthenticated } = useAuthStore();
   const { showToast } = useToastStore();
 
-  // Active view fallback helper
   const active = currentView || activeTab || "explore";
 
-  // Unified click handler supporting all prop variations & normalizing 'favourites'
   const handleSelect = (viewId) => {
     const normalized = viewId === "favourites" ? "favorites" : viewId;
     if (onSelectView) onSelectView(normalized);
@@ -60,14 +58,14 @@ export default function Sidebar({
     { id: "local", label: "Local", icon: Disc },
   ];
 
-  // 1. Fetch user's real playlists from MongoDB on load/login
+  // 1. Fetch user's playlists
   useEffect(() => {
     async function fetchPlaylists() {
       if (!isAuthenticated) {
         setPlaylists([
           { _id: "demo_1", name: "Design Flow" },
-          { _id: "demo_2", name: "Best of 2020" },
-          { _id: "demo_3", name: "Nigeria Jams" },
+          { _id: "demo_2", name: "Best of 2026" },
+          { _id: "demo_3", name: "Chill Vibe" },
         ]);
         return;
       }
@@ -79,22 +77,22 @@ export default function Sidebar({
         } else {
           setPlaylists([
             { _id: "demo_1", name: "Design Flow" },
-            { _id: "demo_2", name: "Best of 2020" },
-            { _id: "demo_3", name: "Nigeria Jams" },
+            { _id: "demo_2", name: "Best of 2026" },
+            { _id: "demo_3", name: "Chill Vibe" },
           ]);
         }
       } catch {
         setPlaylists([
           { _id: "demo_1", name: "Design Flow" },
-          { _id: "demo_2", name: "Best of 2020" },
-          { _id: "demo_3", name: "Nigeria Jams" },
+          { _id: "demo_2", name: "Best of 2026" },
+          { _id: "demo_3", name: "Chill Vibe" },
         ]);
       }
     }
     fetchPlaylists();
   }, [isAuthenticated]);
 
-  // 2. Submit new playlist smoothly without browser prompt/alert
+  // 2. Submit new playlist smoothly without prompt
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!newPlaylistName.trim()) {
@@ -136,16 +134,16 @@ export default function Sidebar({
   return (
     <aside className="w-60 h-screen bg-[#14151f] flex flex-col justify-between p-5 border-r border-white/5 select-none overflow-y-auto shrink-0 z-20">
       <div>
-        {/* Brand Logo */}
+        {/* Brand Logo: RuVibe */}
         <div
           onClick={() => handleSelect("explore")}
-          className="flex items-center gap-2 mb-8 px-2 cursor-pointer"
+          className="flex items-center gap-2.5 mb-8 px-2 cursor-pointer group"
         >
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
-            <Activity size={18} />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
+            <Activity size={20} />
           </div>
-          <span className="text-xl font-bold tracking-wide text-white">
-            Groovvy
+          <span className="text-xl font-extrabold tracking-tight text-white font-sans">
+            Ru<span className="text-blue-500">Vibe</span>
           </span>
         </div>
 
@@ -211,7 +209,6 @@ export default function Sidebar({
             Playlist
           </p>
 
-          {/* Create Button */}
           <button
             onClick={() => setIsCreating(true)}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all mb-2 cursor-pointer"
@@ -220,7 +217,6 @@ export default function Sidebar({
             <span>Create New</span>
           </button>
 
-          {/* Inline Playlist Creator Input (No Browser Prompt!) */}
           {isCreating && (
             <form onSubmit={handleCreateSubmit} className="mb-2 px-1 animate-fadeIn">
               <div className="flex items-center gap-1 bg-[#1c1e2b] border border-blue-500/50 rounded-xl p-1 shadow-lg">
@@ -259,7 +255,6 @@ export default function Sidebar({
             </form>
           )}
 
-          {/* Playlists List */}
           <div className="space-y-1">
             {playlists.map((playlist, idx) => {
               const playlistName =
@@ -291,7 +286,7 @@ export default function Sidebar({
           </p>
           <div className="flex items-center gap-1.5 text-[10px] text-blue-400">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-            <span>Playing on Device</span>
+            <span>Playing on RuVibe</span>
           </div>
         </div>
       </div>

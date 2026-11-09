@@ -55,7 +55,7 @@ export default function GenresView({ initialGenre, onOpenAddToPlaylist }) {
     },
     {
       name: "R&B / Soul",
-      tagline: "Smooth grooves, velvety vocals, and soulful late-night rhythms.",
+      tagline: "Smooth melodies, velvety vocals, and soulful late-night rhythms.",
       gradient: "from-[#8d3b75] to-[#3d1a33]",
       image:
         "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80",
