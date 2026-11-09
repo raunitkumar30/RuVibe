@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   Loader2,
-  MoreHorizontal,
   UserPlus,
   Check,
   Search,
@@ -17,7 +16,7 @@ import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useFavoritesStore } from "../store/useFavoritesStore";
 
-export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
+export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist }) {
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [artistsList, setArtistsList] = useState([]);
   const [page, setPage] = useState(1);
@@ -33,6 +32,23 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { toggleLike, isLiked } = useFavoritesStore();
 
+  // Sync selected artist when initialArtist is passed
+  useEffect(() => {
+    if (initialArtist) {
+      if (typeof initialArtist === "object") {
+        setSelectedArtist(initialArtist);
+      } else {
+        setSelectedArtist({
+          name: initialArtist,
+          monthlyListeners: "85,000,000",
+          genre: "Top Verified Artist",
+          avatar:
+            "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
+        });
+      }
+    }
+  }, [initialArtist]);
+
   // 1. Initial Page 1 load (18 artists)
   useEffect(() => {
     async function loadInitialArtists() {
@@ -44,18 +60,13 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
         setHasMore(res.data?.hasMore ?? true);
 
         if (initialArtist) {
+          const artistName = typeof initialArtist === "object" ? initialArtist.name : initialArtist;
           const match = list.find(
-            (a) => a.name.toLowerCase() === initialArtist.toLowerCase()
+            (a) => a.name.toLowerCase() === artistName.toLowerCase()
           );
-          setSelectedArtist(
-            match || {
-              name: initialArtist,
-              monthlyListeners: "85,000,000",
-              genre: "Popular Artist",
-              avatar:
-                "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
-            }
-          );
+          if (match) {
+            setSelectedArtist(match);
+          }
         }
       } catch (err) {
         console.error("Failed to load artists:", err);
@@ -67,7 +78,7 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
     loadInitialArtists();
   }, [initialArtist]);
 
-  // 2. Debounced Live Search for any artist across the entire global catalog
+  // 2. Debounced Live Search
   useEffect(() => {
     if (!searchQuery.trim()) return;
 
@@ -90,7 +101,7 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 3. Infinite Load More Artists (Pages 2, 3, 4...)
+  // 3. Infinite Load More Artists
   const handleLoadMoreArtists = async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
@@ -165,6 +176,11 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
     }
   };
 
+  const handleBackClick = () => {
+    setSelectedArtist(null);
+    if (onBack) onBack();
+  };
+
   // ──────────────────────────────────────────────
   // VIEW B: SINGLE VERIFIED ARTIST PAGE
   // ──────────────────────────────────────────────
@@ -177,14 +193,14 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
       <div className="space-y-6 select-none animate-fadeIn">
         {/* Back Button */}
         <button
-          onClick={() => setSelectedArtist(null)}
+          onClick={handleBackClick}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors cursor-pointer group"
         >
           <ArrowLeft
             size={18}
             className="group-hover:-translate-x-1 transition-transform"
           />
-          <span>Back to all artists</span>
+          <span>Back</span>
         </button>
 
         {/* Hero Banner with Real Photo & Verified Badge */}
@@ -208,155 +224,135 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
                 <CheckCircle2 size={16} fill="currentColor" className="text-black" />
                 <span>Verified Artist</span>
               </div>
-
-              <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-2">
+              <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-3">
                 {selectedArtist.name}
               </h1>
-
-              <p className="text-sm font-semibold text-gray-300">
-                {selectedArtist.monthlyListeners || "85,000,000"} monthly listeners
-                {selectedArtist.genre && (
-                  <span className="text-gray-500 font-normal">
-                    {" "}• {selectedArtist.genre}
-                  </span>
-                )}
+              <p className="text-gray-300 text-sm font-medium mb-6">
+                {selectedArtist.monthlyListeners || "12,500,000"} monthly listeners
+                {selectedArtist.genre ? ` • ${selectedArtist.genre}` : ""}
               </p>
 
-              {/* Actions: Play All + Follow */}
-              <div className="mt-5 flex items-center justify-center sm:justify-start gap-4">
+              {/* Actions: Play All & Follow */}
+              <div className="flex items-center justify-center sm:justify-start gap-3">
                 <button
                   onClick={handlePlayAll}
                   disabled={artistTracks.length === 0}
-                  className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-7 py-3 rounded-full shadow-lg shadow-blue-600/30 transition-all active:scale-95 cursor-pointer"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider px-7 py-3 rounded-full transition-all shadow-lg shadow-blue-600/30 active:scale-95 cursor-pointer"
                 >
-                  <Play size={18} fill="currentColor" />
-                  <span>Play</span>
+                  <Play size={16} fill="currentColor" />
+                  <span>Play All Songs</span>
                 </button>
-
                 <button
                   onClick={() => setIsFollowing((prev) => !prev)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold transition-all border cursor-pointer active:scale-95 ${
+                  className={`flex items-center gap-2 px-5 py-3 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
                     isFollowing
-                      ? "bg-white/10 text-white border-white/20 hover:bg-white/15"
-                      : "bg-transparent text-gray-300 border-white/10 hover:border-white/30 hover:text-white"
+                      ? "bg-white/10 border-blue-400 text-blue-400"
+                      : "border-white/15 text-gray-300 hover:text-white hover:border-white/30"
                   }`}
                 >
-                  {isFollowing ? (
-                    <>
-                      <Check size={14} className="text-blue-400" />
-                      <span>Following</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus size={14} />
-                      <span>Follow</span>
-                    </>
-                  )}
+                  {isFollowing ? <Check size={14} /> : <UserPlus size={14} />}
+                  <span>{isFollowing ? "Following" : "Follow"}</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Popular Tracks Section */}
-        <div className="bg-[#181a26]/70 rounded-3xl p-6 border border-white/5">
-          <h3 className="text-base font-bold text-white mb-4">
-            Popular Hits by {selectedArtist.name}
-          </h3>
+        {/* Songs List Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              All Songs by {selectedArtist.name}
+            </h2>
+            <span className="text-xs text-gray-400 font-mono">
+              {artistTracks.length} tracks
+            </span>
+          </div>
 
           {loadingTracks ? (
-            <div className="py-16 text-center text-gray-400 flex flex-col items-center justify-center gap-2">
-              <Loader2 size={22} className="animate-spin text-blue-500" />
-              <span className="text-xs">Loading songs...</span>
+            <div className="py-20 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
+              <Loader2 size={24} className="animate-spin text-blue-500" />
+              <span className="text-xs">Loading tracks...</span>
             </div>
           ) : artistTracks.length === 0 ? (
-            <div className="py-12 text-center text-gray-500 text-xs">
-              No songs found for this artist.
+            <div className="py-16 text-center text-gray-500 text-xs">
+              No tracks found for this artist right now.
             </div>
           ) : (
-            <div className="divide-y divide-white/[0.03]">
+            <div className="space-y-1.5">
               {artistTracks.map((song, idx) => {
                 const isCurrent = currentTrack?._id === song._id;
-                const trackIsLiked = isLiked ? isLiked(song._id) : false;
+                const isThisPlaying = isCurrent && isPlaying;
+                const liked = isLiked(song._id);
 
                 return (
                   <div
                     key={song._id || idx}
                     onClick={() => handlePlaySong(song)}
-                    className={`grid grid-cols-12 items-center px-4 py-3 rounded-2xl cursor-pointer transition-all ${
+                    className={`flex items-center justify-between p-2.5 px-4 rounded-2xl cursor-pointer transition-all duration-200 group ${
                       isCurrent
-                        ? "bg-blue-600/15 text-blue-400 font-semibold"
-                        : "hover:bg-white/5 text-gray-300"
+                        ? "bg-blue-600/15 border border-blue-500/30"
+                        : "bg-[#181a24]/60 hover:bg-[#1f2130] border border-white/5"
                     }`}
                   >
-                    <div className="col-span-1 text-center text-xs text-gray-500">
-                      {isCurrent && isPlaying ? (
-                        <Pause
-                          size={14}
-                          className="mx-auto text-blue-400 fill-blue-400"
-                        />
-                      ) : (
-                        <span>{String(idx + 1).padStart(2, "0")}</span>
-                      )}
-                    </div>
+                    <div className="flex items-center gap-4 min-w-0 flex-1 pr-4">
+                      <span className="w-5 text-center text-xs font-mono font-bold text-gray-500">
+                        {String(idx + 1).padStart(2, "0")}
+                      </span>
 
-                    <div className="col-span-7 flex items-center gap-3 min-w-0 pr-2">
-                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#242738] shrink-0">
+                      <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#242738] shrink-0 border border-white/10">
                         <img
-                          src={
-                            song.coverArt ||
-                            "https://via.placeholder.com/100"
-                          }
+                          src={song.coverArt || avatar}
                           alt={song.title}
                           className="w-full h-full object-cover"
                         />
+                        <div
+                          className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
+                            isCurrent
+                              ? "opacity-100 text-blue-400"
+                              : "opacity-0 group-hover:opacity-100 text-white"
+                          }`}
+                        >
+                          {isThisPlaying ? (
+                            <Pause size={16} fill="currentColor" />
+                          ) : (
+                            <Play size={16} fill="currentColor" className="ml-0.5" />
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0">
+
+                      <div className="min-w-0 flex-1">
                         <p
-                          className={`text-sm truncate ${
-                            isCurrent ? "text-blue-400 font-bold" : "text-white"
+                          className={`text-sm font-semibold truncate ${
+                            isCurrent
+                              ? "text-blue-400"
+                              : "text-white group-hover:text-blue-300"
                           }`}
                         >
                           {song.title}
                         </p>
-                        <p className="text-xs text-gray-400 truncate">
-                          {song.genre || selectedArtist.genre || "Pop"}
+                        <p className="text-xs text-gray-400 truncate mt-0.5">
+                          {song.album || "Single"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="col-span-2 text-right text-xs text-gray-400 hidden sm:block">
-                      {formatDuration(song.duration)}
-                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span className="text-xs font-mono text-gray-400">
+                        {formatDuration(song.duration)}
+                      </span>
 
-                    <div className="col-span-4 sm:col-span-2 flex items-center justify-end gap-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (toggleLike) toggleLike(song);
+                          toggleLike(song);
                         }}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          trackIsLiked
-                            ? "text-red-500"
-                            : "text-gray-500 hover:text-red-400"
+                        className={`p-1.5 rounded-full transition-transform active:scale-75 cursor-pointer ${
+                          liked ? "text-red-500 fill-red-500" : "text-gray-500 hover:text-white"
                         }`}
-                        title={trackIsLiked ? "Unlike" : "Like"}
+                        title={liked ? "Remove from Liked" : "Save to Liked"}
                       >
-                        <Heart
-                          size={15}
-                          fill={trackIsLiked ? "currentColor" : "none"}
-                        />
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onOpenAddToPlaylist) onOpenAddToPlaylist(song);
-                        }}
-                        className="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                        title="Add to Playlist"
-                      >
-                        <MoreHorizontal size={15} />
+                        <Heart size={16} fill={liked ? "currentColor" : "none"} />
                       </button>
                     </div>
                   </div>
@@ -370,31 +366,25 @@ export default function ArtistsView({ initialArtist, onOpenAddToPlaylist }) {
   }
 
   // ──────────────────────────────────────────────
-  // VIEW A: INFINITE REAL ARTISTS EXPLORER
+  // VIEW A: ALL ARTISTS GRID
   // ──────────────────────────────────────────────
   return (
     <div className="space-y-6 select-none animate-fadeIn">
-      {/* Header & Global Search */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-            <Mic2 size={26} className="text-blue-500" />
-            Top Artists
-            <span className="text-xs font-mono font-medium text-gray-500">
-              ({artistsList.length} artists loaded)
-            </span>
-          </h2>
+          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <Mic2 size={24} className="text-blue-500" />
+            <span>Verified Artists</span>
+          </h1>
           <p className="text-xs text-gray-400 mt-1">
-            Explore world-renowned artists, their discographies, and top streams.
+            Top global artists with verified full music catalogs
           </p>
         </div>
 
-        {/* Global Live Search Artists Box */}
+        {/* Global Artist Search Bar */}
         <div className="relative w-full sm:w-72">
-          <Search
-            size={16}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-          />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search any artist worldwide..."

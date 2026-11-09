@@ -36,7 +36,7 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
-  
+
   // Songs Pagination State
   const [tracks, setTracks] = useState([]);
   const [songsPage, setSongsPage] = useState(1);
@@ -276,8 +276,8 @@ export default function App() {
     currentView === "radio"
       ? "LIVE"
       : currentView === "podcast"
-      ? "PODCAST"
-      : "MUSIC";
+        ? "PODCAST"
+        : "MUSIC";
 
   const handleNavigateView = (viewName) => {
     setCurrentView(viewName);
@@ -370,12 +370,13 @@ export default function App() {
                 </div>
               )}
 
-              <HeroBanner onPlayMusic={() => {}} />
+              <HeroBanner onPlayMusic={() => { }} />
 
               {/* Dynamic Top Artists with Pagination */}
               <TopArtists
-                onSelectArtist={(artistName) => {
-                  handleFilterMusic(artistName);
+                onSelectArtist={(artist) => {
+                  setSelectedArtist(artist);
+                  setCurrentView("artist-profile");
                 }}
                 onSeeAllArtists={() => handleNavigateView("artists")}
               />
@@ -424,7 +425,11 @@ export default function App() {
           {currentView === "artist-profile" && selectedArtist && (
             <ArtistsView
               initialArtist={selectedArtist}
-              onBack={() => handleNavigateView("explore")}
+              onBack={() => {
+                setSelectedArtist(null);
+                handleNavigateView("explore");
+              }}
+              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
             />
           )}
 

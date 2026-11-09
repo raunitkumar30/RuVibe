@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Loader2, Plus, Sparkles } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import api from "../api/axios";
 
 export default function TopArtists({ onSelectArtist, onSeeAllArtists }) {
@@ -68,7 +68,7 @@ export default function TopArtists({ onSelectArtist, onSeeAllArtists }) {
             </span>
           </h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Click any artist to explore their hits
+            Click any artist to explore all their songs
           </p>
         </div>
 
@@ -87,9 +87,9 @@ export default function TopArtists({ onSelectArtist, onSeeAllArtists }) {
         {artists.map((artist) => (
           <div
             key={artist.id || artist.name}
-            onClick={() => onSelectArtist && onSelectArtist(artist.name)}
+            onClick={() => onSelectArtist && onSelectArtist(artist)}
             className="bg-[#181a24] hover:bg-[#1f2130] p-3.5 rounded-2xl flex flex-col items-center text-center border border-white/5 hover:border-blue-500/35 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group active:scale-95 animate-fadeIn"
-            title={`Explore songs by ${artist.name}`}
+            title={`Open artist page for ${artist.name}`}
           >
             {/* Real Artist Photo (Circular Portrait) */}
             <div className="w-20 h-20 rounded-full overflow-hidden mb-3 shadow-lg bg-[#222538] border border-white/10 shrink-0">
