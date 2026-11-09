@@ -7,8 +7,8 @@ import {
   Clock,
   ArrowLeft,
   Loader2,
-  Music,
-  MoreHorizontal,
+  Search,
+  Plus,
 } from "lucide-react";
 import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
@@ -16,162 +16,97 @@ import { useFavoritesStore } from "../store/useFavoritesStore";
 
 export default function AlbumsView({ onOpenAddToPlaylist }) {
   const [albums, setAlbums] = useState([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [albumLoading, setAlbumLoading] = useState(false);
 
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { toggleLike, isLiked } = useFavoritesStore();
 
-  // Curated Fallback Albums with real audio streams & artwork
-  const fallbackAlbums = [
-    {
-      _id: "album_1",
-      title: "After Hours",
-      artist: { username: "The Weeknd" },
-      coverArt:
-        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80",
-      year: "2020",
-      musics: [
-        {
-          _id: "ah_1",
-          title: "Blinding Lights",
-          artist: "The Weeknd",
-          duration: 200,
-          coverArt:
-            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-        {
-          _id: "ah_2",
-          title: "Save Your Tears",
-          artist: "The Weeknd",
-          duration: 215,
-          coverArt:
-            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-        {
-          _id: "ah_3",
-          title: "In Your Eyes",
-          artist: "The Weeknd",
-          duration: 237,
-          coverArt:
-            "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      _id: "album_2",
-      title: "Astroworld",
-      artist: { username: "Travis Scott" },
-      coverArt:
-        "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
-      year: "2018",
-      musics: [
-        {
-          _id: "astro_1",
-          title: "SICKO MODE",
-          artist: "Travis Scott",
-          duration: 312,
-          coverArt:
-            "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-        {
-          _id: "astro_2",
-          title: "Butterfly Effect",
-          artist: "Travis Scott",
-          duration: 212,
-          coverArt:
-            "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      _id: "album_3",
-      title: "Certified Lover Boy",
-      artist: { username: "Drake" },
-      coverArt:
-        "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&auto=format&fit=crop&q=80",
-      year: "2021",
-      musics: [
-        {
-          _id: "clb_1",
-          title: "Fair Trade",
-          artist: "Drake ft. Travis Scott",
-          duration: 291,
-          coverArt:
-            "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-        {
-          _id: "clb_2",
-          title: "Way 2 Sexy",
-          artist: "Drake",
-          duration: 257,
-          coverArt:
-            "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-    {
-      _id: "album_4",
-      title: "Future Nostalgia",
-      artist: { username: "Dua Lipa" },
-      coverArt:
-        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=80",
-      year: "2020",
-      musics: [
-        {
-          _id: "fn_1",
-          title: "Levitating",
-          artist: "Dua Lipa",
-          duration: 203,
-          coverArt:
-            "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-        {
-          _id: "fn_2",
-          title: "Don't Start Now",
-          artist: "Dua Lipa",
-          duration: 183,
-          coverArt:
-            "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&auto=format&fit=crop&q=80",
-          uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-        },
-      ],
-    },
-  ];
-
-  // 1. Fetch All Albums from MongoDB
+  // 1. Initial Page 1 Albums Load
   useEffect(() => {
-    async function fetchAlbums() {
+    async function fetchInitialAlbums() {
       setLoading(true);
       try {
-        const res = await api.get("/music/albums");
+        const res = await api.get("/music/albums?page=1&limit=18");
         const list = res.data?.albums || [];
-        if (list.length > 0) {
-          setAlbums(list);
-        } else {
-          setAlbums(fallbackAlbums);
-        }
-      } catch {
-        setAlbums(fallbackAlbums);
+        setAlbums(list);
+        setHasMore(res.data?.hasMore ?? true);
+        setPage(1);
+      } catch (err) {
+        console.error("Failed to load initial albums:", err);
       } finally {
         setLoading(false);
       }
     }
-    fetchAlbums();
-  }, []);
 
-  // 2. Select & Load an Album
+    if (!searchQuery.trim()) {
+      fetchInitialAlbums();
+    }
+  }, [searchQuery]);
+
+  // 2. Debounced Live Search for any album globally
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(
+          `/music/albums?q=${encodeURIComponent(searchQuery.trim())}&page=1&limit=18`
+        );
+        setAlbums(res.data?.albums || []);
+        setHasMore(res.data?.hasMore ?? false);
+        setPage(1);
+      } catch (err) {
+        console.error("Live album search error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // 3. Infinite Load More Albums
+  const handleLoadMoreAlbums = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+
+    try {
+      const endpoint = searchQuery.trim()
+        ? `/music/albums?q=${encodeURIComponent(searchQuery.trim())}&page=${nextPage}&limit=18`
+        : `/music/albums?page=${nextPage}&limit=18`;
+
+      const res = await api.get(endpoint);
+      const newAlbums = res.data?.albums || [];
+
+      if (newAlbums.length > 0) {
+        setAlbums((prev) => {
+          const existingIds = new Set(prev.map((a) => a._id || a.albumid));
+          const uniqueNew = newAlbums.filter((a) => !existingIds.has(a._id || a.albumid));
+          return [...prev, ...uniqueNew];
+        });
+        setPage(nextPage);
+        setHasMore(res.data?.hasMore ?? true);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Load more albums error:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // 4. Select & Load Full Album Tracklist
   const handleSelectAlbum = async (album) => {
-    // If it's a fallback album or already has full songs populated
     if (album.musics && album.musics.length > 0 && album.musics[0].uri) {
       setSelectedAlbum(album);
       return;
@@ -179,7 +114,7 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
 
     setAlbumLoading(true);
     try {
-      const res = await api.get(`/music/albums/${album._id}`);
+      const res = await api.get(`/music/albums/${album._id || album.albumid}`);
       if (res.data?.album) {
         setSelectedAlbum(res.data.album);
       } else {
@@ -200,8 +135,8 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
   };
 
   const getArtistName = (art) => {
-    if (!art) return "Unknown Artist";
-    if (typeof art === "object") return art.username || "Artist";
+    if (!art) return "Various Artists";
+    if (typeof art === "object") return art.username || art.name || "Artist";
     return art;
   };
 
@@ -254,12 +189,16 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
               src={albumCover}
               alt={selectedAlbum.title}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src =
+                  "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80";
+              }}
             />
           </div>
 
           <div className="flex-1 text-center sm:text-left">
             <span className="text-[11px] font-bold tracking-widest uppercase text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-              Album
+              Studio Album
             </span>
             <h1 className="text-3xl sm:text-4xl font-black text-white mt-2 mb-1 tracking-tight">
               {selectedAlbum.title}
@@ -267,7 +206,7 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
             <p className="text-sm font-semibold text-gray-300">
               {albumArtist} •{" "}
               <span className="text-gray-500 font-normal">
-                {selectedAlbum.year || "2024"} • {tracks.length} songs
+                {selectedAlbum.year || "2026"} • {tracks.length} songs
               </span>
             </p>
 
@@ -289,105 +228,95 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
         <div className="bg-[#181a26]/70 rounded-3xl p-5 border border-white/5">
           <div className="grid grid-cols-12 text-xs font-semibold text-gray-400 uppercase tracking-wider px-4 pb-3 border-b border-white/5">
             <span className="col-span-1 text-center">#</span>
-            <span className="col-span-7">Title</span>
+            <span className="col-span-8">Title</span>
             <span className="col-span-2 text-right hidden sm:block">
               <Clock size={14} className="inline ml-auto" />
             </span>
-            <span className="col-span-4 sm:col-span-2 text-right">Actions</span>
+            <span className="col-span-3 sm:col-span-1 text-right">Like</span>
           </div>
 
-          {tracks.length === 0 ? (
+          {albumLoading ? (
+            <div className="py-20 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
+              <Loader2 size={24} className="animate-spin text-blue-500" />
+              <span className="text-xs">Loading album tracks...</span>
+            </div>
+          ) : tracks.length === 0 ? (
             <div className="py-16 text-center text-gray-500 text-xs">
-              No songs added to this album yet.
+              No tracks available for this album right now.
             </div>
           ) : (
-            <div className="divide-y divide-white/[0.03] mt-1">
-              {tracks.map((song, idx) => {
+            <div className="divide-y divide-white/5">
+              {tracks.map((song, index) => {
                 const isCurrent = currentTrack?._id === song._id;
-                const trackIsLiked = isLiked ? isLiked(song._id) : false;
-                const songArtist = getArtistName(song.artist) || albumArtist;
+                const isThisPlaying = isCurrent && isPlaying;
+                const liked = isLiked(song._id);
 
                 return (
                   <div
-                    key={song._id || idx}
+                    key={song._id || index}
                     onClick={() => handlePlaySong(song, tracks)}
-                    className={`grid grid-cols-12 items-center px-4 py-3 rounded-2xl cursor-pointer transition-all ${
-                      isCurrent
-                        ? "bg-blue-600/15 text-blue-400 font-semibold"
-                        : "hover:bg-white/5 text-gray-300"
+                    className={`grid grid-cols-12 items-center px-4 py-3 rounded-2xl hover:bg-white/[0.04] transition-all cursor-pointer group ${
+                      isCurrent ? "bg-blue-600/10" : ""
                     }`}
                   >
                     {/* Index / Play Indicator */}
-                    <div className="col-span-1 text-center text-xs text-gray-500">
-                      {isCurrent && isPlaying ? (
-                        <Pause
-                          size={14}
-                          className="mx-auto text-blue-400 fill-blue-400"
-                        />
+                    <div className="col-span-1 text-center">
+                      {isThisPlaying ? (
+                        <div className="flex items-end justify-center gap-0.5 h-3">
+                          <span className="w-0.5 bg-blue-500 h-3 animate-pulse"></span>
+                          <span className="w-0.5 bg-blue-500 h-2 animate-pulse delay-75"></span>
+                          <span className="w-0.5 bg-blue-500 h-3 animate-pulse delay-150"></span>
+                        </div>
                       ) : (
-                        <span className="group-hover:hidden">
-                          {String(idx + 1).padStart(2, "0")}
+                        <span className="text-xs text-gray-400 font-mono group-hover:hidden">
+                          {index + 1}
                         </span>
                       )}
+                      <Play
+                        size={14}
+                        fill="currentColor"
+                        className={`text-white mx-auto hidden ${
+                          isThisPlaying ? "" : "group-hover:block"
+                        }`}
+                      />
                     </div>
 
                     {/* Title & Artist */}
-                    <div className="col-span-7 flex items-center gap-3 min-w-0 pr-2">
-                      <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#242738] shrink-0">
-                        <img
-                          src={song.coverArt || albumCover}
-                          alt={song.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                    <div className="col-span-8 flex items-center gap-3 min-w-0 pr-4">
                       <div className="min-w-0">
                         <p
-                          className={`text-sm truncate ${
-                            isCurrent ? "text-blue-400 font-bold" : "text-white"
+                          className={`text-sm font-semibold truncate ${
+                            isCurrent
+                              ? "text-blue-400"
+                              : "text-white group-hover:text-blue-300"
                           }`}
                         >
                           {song.title}
                         </p>
                         <p className="text-xs text-gray-400 truncate">
-                          {songArtist}
+                          {song.artist || albumArtist}
                         </p>
                       </div>
                     </div>
 
                     {/* Duration */}
-                    <div className="col-span-2 text-right text-xs text-gray-400 hidden sm:block">
+                    <div className="col-span-2 text-right hidden sm:block text-xs font-mono text-gray-400">
                       {formatDuration(song.duration)}
                     </div>
 
-                    {/* Actions: Heart + Menu */}
-                    <div className="col-span-4 sm:col-span-2 flex items-center justify-end gap-2">
+                    {/* Actions */}
+                    <div className="col-span-3 sm:col-span-1 flex items-center justify-end">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (toggleLike) toggleLike(song);
+                          toggleLike(song);
                         }}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          trackIsLiked
-                            ? "text-red-500"
-                            : "text-gray-500 hover:text-red-400"
+                        className={`p-1.5 rounded-full transition-transform active:scale-75 cursor-pointer ${
+                          liked ? "text-red-500 fill-red-500" : "text-gray-500 hover:text-white"
                         }`}
-                        title={trackIsLiked ? "Unlike" : "Like"}
+                        title={liked ? "Remove from Liked" : "Save to Liked"}
                       >
-                        <Heart
-                          size={15}
-                          fill={trackIsLiked ? "currentColor" : "none"}
-                        />
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onOpenAddToPlaylist) onOpenAddToPlaylist(song);
-                        }}
-                        className="text-gray-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                        title="Add to Playlist"
-                      >
-                        <MoreHorizontal size={15} />
+                        <Heart size={16} fill={liked ? "currentColor" : "none"} />
                       </button>
                     </div>
                   </div>
@@ -401,73 +330,109 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
   }
 
   // ──────────────────────────────────────────────
-  // VIEW A: ALBUMS GRID (MAIN)
+  // VIEW A: ALL ALBUMS GRID VIEW
   // ──────────────────────────────────────────────
   return (
-    <div className="space-y-6 select-none animate-fadeIn">
-      {/* Page Title */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 animate-fadeIn select-none">
+      {/* Header with Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
-            <Disc size={26} className="text-blue-500" />
-            Featured Albums
-          </h2>
+          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <Disc size={24} className="text-blue-500" />
+            <span>Studio Albums</span>
+          </h1>
           <p className="text-xs text-gray-400 mt-1">
-            Browse through full studio albums and discographies.
+            Official trending albums and compilations available in full
           </p>
+        </div>
+
+        {/* Global Album Search Bar */}
+        <div className="relative w-full sm:w-72">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search any album worldwide..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#181a24] text-xs text-white placeholder-gray-500 pl-10 pr-4 py-2.5 rounded-2xl border border-white/5 focus:outline-none focus:border-blue-500/50 shadow-inner"
+          />
         </div>
       </div>
 
       {loading ? (
         <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
           <Loader2 size={24} className="animate-spin text-blue-500" />
-          <span className="text-xs">Loading albums...</span>
+          <span className="text-xs">Loading studio albums...</span>
+        </div>
+      ) : albums.length === 0 ? (
+        <div className="py-24 text-center text-gray-500 text-xs">
+          No albums found matching "{searchQuery}".
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-6">
-          {albums.map((album, idx) => {
-            const albumArtist = getArtistName(album.artist);
-            const cover =
-              album.coverArt ||
-              album.musics?.[0]?.coverArt ||
-              fallbackAlbums[idx % fallbackAlbums.length].coverArt;
-            const songCount = album.musics?.length || 8;
-
-            return (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+            {albums.map((album) => (
               <div
-                key={album._id || idx}
+                key={album._id || album.albumid}
                 onClick={() => handleSelectAlbum(album)}
-                className="group bg-[#181a26]/80 hover:bg-[#1e2030] p-4 rounded-3xl border border-white/5 hover:border-blue-500/30 transition-all duration-300 hover:-translate-y-1 cursor-pointer shadow-lg flex flex-col"
+                className="group bg-[#181a24] hover:bg-[#1f2130] p-3.5 rounded-2xl flex flex-col border border-white/5 hover:border-blue-500/30 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95 shadow-md"
               >
-                {/* Artwork with hover play button */}
-                <div className="relative aspect-square w-full rounded-2xl overflow-hidden mb-3 bg-[#242738] shadow-md">
+                {/* Album Cover */}
+                <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 shadow-lg bg-[#222538] border border-white/10">
                   <img
-                    src={cover}
+                    src={album.coverArt}
                     alt={album.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      e.target.src =
+                        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80";
+                    }}
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
-                      <Play size={20} fill="currentColor" className="ml-0.5" />
+                    <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg">
+                      <Play size={16} fill="currentColor" className="ml-0.5" />
                     </div>
                   </div>
                 </div>
 
-                {/* Album Info */}
-                <h4 className="text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">
+                {/* Album Title & Artist */}
+                <p className="text-xs font-bold text-white truncate w-full group-hover:text-blue-400 transition-colors">
                   {album.title}
-                </h4>
-                <p className="text-xs text-gray-400 truncate mt-0.5">
-                  {albumArtist}
                 </p>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500 font-medium">
-                  <span>Album</span>
-                  <span>{songCount} songs</span>
+                <p className="text-[11px] text-gray-400 truncate w-full mt-0.5">
+                  {getArtistName(album.artist)}
+                </p>
+                <div className="flex items-center justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                  <span>{album.year || "2026"}</span>
+                  <span>{album.language || "ALBUM"}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+
+          {/* Infinite Dynamic Load More Albums Button */}
+          {hasMore && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={handleLoadMoreAlbums}
+                disabled={loadingMore}
+                className="flex items-center gap-2 px-7 py-3 rounded-2xl bg-white/5 hover:bg-blue-600/20 text-xs font-bold text-gray-300 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin text-blue-400" />
+                    <span>Loading more albums...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={14} className="text-blue-400" />
+                    <span>Load More Albums</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

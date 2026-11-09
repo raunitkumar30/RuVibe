@@ -425,11 +425,7 @@ export default function App() {
           {currentView === "artist-profile" && selectedArtist && (
             <ArtistsView
               initialArtist={selectedArtist}
-              onBack={() => {
-                setSelectedArtist(null);
-                handleNavigateView("explore");
-              }}
-              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+              onBack={() => handleNavigateView("explore")}
             />
           )}
 

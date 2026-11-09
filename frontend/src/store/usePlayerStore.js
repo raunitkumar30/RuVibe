@@ -9,21 +9,30 @@ const getSavedRecent = () => {
   }
 };
 
+const getSavedCurrentTrack = () => {
+  try {
+    const saved = localStorage.getItem("ruvibe_current_track");
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const usePlayerStore = create((set, get) => ({
   // State
-  currentTrack: null,     // Currently playing track
-  isPlaying: false,       // Play / Pause state
-  currentTime: 0,         // Current timestamp in seconds
-  duration: 0,            // Total duration in seconds
-  volume: 0.8,            // Default volume: 80% (0.0 to 1.0)
-  isMuted: false,         // Mute toggle
-  playbackRate: 1.0,      // Playback speed: 0.75, 1, 1.25, 1.5, 2
-  sleepTimer: null,       // null | 'end_of_track' | number (minutes)
-  sleepTimerRemaining: null, // Seconds remaining on timer
-  queue: [],              // Full list of tracks in current view
-  currentIndex: 0,        // Position in queue
-  isShuffle: false,       // Shuffle active?
-  isRepeat: false,        // Repeat active?
+  currentTrack: getSavedCurrentTrack(), // Restores actual last song on refresh
+  isPlaying: false,                    // Always paused on refresh
+  currentTime: 0,                      // Current timestamp in seconds
+  duration: 0,                         // Total duration in seconds
+  volume: 0.8,                         // Default volume: 80% (0.0 to 1.0)
+  isMuted: false,                      // Mute toggle
+  playbackRate: 1.0,                   // Playback speed: 0.75, 1, 1.25, 1.5, 2
+  sleepTimer: null,                    // null | 'end_of_track' | number (minutes)
+  sleepTimerRemaining: null,           // Seconds remaining on timer
+  queue: [],                           // Full list of tracks in current view
+  currentIndex: 0,                     // Position in queue
+  isShuffle: false,                    // Shuffle active?
+  isRepeat: false,                     // Repeat active?
   recentlyPlayed: getSavedRecent(),
 
   // Helper to record history
@@ -41,11 +50,13 @@ export const usePlayerStore = create((set, get) => ({
 
   clearRecent: () => {
     localStorage.removeItem("ruvibe_recent");
-    set({ recentlyPlayed: [] });
+    localStorage.removeItem("ruvibe_current_track");
+    set({ recentlyPlayed: [], currentTrack: null });
   },
 
   // 1. Play specific track & load playlist queue
   playTrack: (track, trackList = null) => {
+    if (!track) return;
     let currentQueue = get().queue;
     if (trackList && trackList.length > 0) {
       currentQueue = trackList;
@@ -53,6 +64,13 @@ export const usePlayerStore = create((set, get) => ({
 
     const idx = currentQueue.findIndex((t) => t._id === track._id);
     get().addToRecent(track);
+
+    // Save actual playing song to localStorage
+    try {
+      localStorage.setItem("ruvibe_current_track", JSON.stringify(track));
+    } catch (e) {
+      console.warn("Could not save currentTrack to localStorage", e);
+    }
 
     set({
       currentTrack: track,
@@ -89,6 +107,11 @@ export const usePlayerStore = create((set, get) => ({
     const nextTrack = queue[nextIndex];
     if (nextTrack) {
       get().addToRecent(nextTrack);
+      try {
+        localStorage.setItem("ruvibe_current_track", JSON.stringify(nextTrack));
+      } catch (e) {
+        console.warn("Could not save currentTrack to localStorage", e);
+      }
       set({
         currentTrack: nextTrack,
         currentIndex: nextIndex,
@@ -113,6 +136,11 @@ export const usePlayerStore = create((set, get) => ({
     const prevTrack = queue[prevIndex];
     if (prevTrack) {
       get().addToRecent(prevTrack);
+      try {
+        localStorage.setItem("ruvibe_current_track", JSON.stringify(prevTrack));
+      } catch (e) {
+        console.warn("Could not save currentTrack to localStorage", e);
+      }
       set({
         currentTrack: prevTrack,
         currentIndex: prevIndex,

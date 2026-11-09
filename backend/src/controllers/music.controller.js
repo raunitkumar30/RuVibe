@@ -10,6 +10,8 @@ const {
   searchGlobalTracks,
   fetchLiveTopCharts,
   fetchTopArtists,
+  fetchTopAlbums,
+  fetchAlbumDetails,
   searchPodcasts: fetchPodcastsFromApi,
   getRadioStations: fetchRadioStationsFromApi,
   getSongLyrics,
@@ -87,7 +89,7 @@ async function getAllMusics(req, res) {
 
     let chartSongs = [];
     try {
-      chartSongs = await fetchLiveTopCharts(page, limit);
+      chartSongs = await fetchLiveTopCharts(limit, page);
     } catch (err) {
       console.warn("Live chart fetch error fallback:", err.message);
     }
@@ -140,37 +142,96 @@ async function getTopArtists(req, res) {
   }
 }
 
-// 5. Get All Albums
+// 5. 🌟 GET ALL ALBUMS: Dynamic Streaming Albums + Local DB with Pagination & Search
 async function getAllAlbums(req, res) {
-  const albums = await albumModel
-    .find()
-    .limit(10)
-    .select("title artist musics")
-    .populate("artist", "username email");
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 18);
+    const query = req.query.q || "";
 
-  res.status(200).json({
-    message: "All albums fetched successfully",
-    albums: albums,
-  });
+    let localAlbums = [];
+    if (page === 1 && !query) {
+      try {
+        const found = await albumModel
+          .find()
+          .limit(6)
+          .select("title artist musics")
+          .populate("artist", "username email");
+
+        localAlbums = (found || [])
+          .filter((a) => a.musics && a.musics.length > 0)
+          .map((a) => ({
+            _id: a._id,
+            title: a.title,
+            artist: a.artist || { username: "Artist" },
+            coverArt:
+              "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80",
+            year: "2026",
+            language: "LOCAL",
+          }));
+      } catch (err) {
+        console.warn("Local albums query fallback:", err.message);
+      }
+    }
+
+    const dynamicResult = await fetchTopAlbums(page, limit, query);
+    const dynamicAlbums = dynamicResult?.albums || [];
+    const combined = [...localAlbums, ...dynamicAlbums];
+
+    res.status(200).json({
+      message: "All albums fetched successfully",
+      albums: combined,
+      page,
+      hasMore: dynamicResult?.hasMore ?? true,
+    });
+  } catch (error) {
+    console.error("Error fetching albums:", error);
+    res.status(500).json({ message: "Failed to fetch albums" });
+  }
 }
 
-// 6. Get Album by ID
+// 6. 🌟 GET ALBUM BY ID: Dynamic Full Tracklist or Local DB
 async function getAlbumById(req, res) {
   const albumId = req.params.albumId;
 
-  const album = await albumModel
-    .findById(albumId)
-    .populate("artist", "username email")
-    .populate("musics", "title uri duration coverArt");
-
-  if (!album) {
-    return res.status(404).json({ message: "Album not found" });
+  // If dynamic album (starts with album_ or has custom alphanumeric ID)
+  if (String(albumId).startsWith("album_") || !String(albumId).match(/^[0-9a-fA-F]{24}$/)) {
+    const dynamicAlbum = await fetchAlbumDetails(albumId);
+    if (dynamicAlbum) {
+      return res.status(200).json({
+        message: "Dynamic album fetched successfully",
+        album: dynamicAlbum,
+      });
+    }
   }
 
-  res.status(200).json({
-    message: "Album fetched successfully",
-    album: album,
-  });
+  // Local MongoDB Album lookup
+  try {
+    const album = await albumModel
+      .findById(albumId)
+      .populate("artist", "username email")
+      .populate("musics", "title uri duration coverArt");
+
+    if (album) {
+      return res.status(200).json({
+        message: "Album fetched successfully",
+        album: album,
+      });
+    }
+  } catch (err) {
+    console.warn("MongoDB album lookup error:", err.message);
+  }
+
+  // Fallback to dynamic lookup if not found in Mongo
+  const fallbackAlbum = await fetchAlbumDetails(albumId);
+  if (fallbackAlbum) {
+    return res.status(200).json({
+      message: "Dynamic album fetched successfully",
+      album: fallbackAlbum,
+    });
+  }
+
+  res.status(404).json({ message: "Album not found" });
 }
 
 // 7. Logout User

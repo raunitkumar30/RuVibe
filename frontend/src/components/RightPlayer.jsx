@@ -21,7 +21,9 @@ import {
   RotateCw,
   Gauge,
   Check,
+  Disc,
 } from "lucide-react";
+import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useToastStore } from "../store/useToastStore";
 
@@ -53,6 +55,7 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
     playTrack,
     removeFromQueueByIndex,
     clearUpcomingQueue,
+    recentlyPlayed,
   } = usePlayerStore();
 
   const { toast } = useToastStore();
@@ -67,21 +70,15 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
   const sleepMenuRef = useRef(null);
   const speedMenuRef = useRef(null);
 
-  const track = currentTrack || {
-    title: "Butterfly Effect",
-    artist: "Travis Scott",
-    album: "Best of 2020",
-    coverArt:
-      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
-    duration: 227,
-  };
+  // Uses restored track from localStorage or most recent track, NOT hardcoded Butterfly Effect
+  const track = currentTrack || (recentlyPlayed && recentlyPlayed.length > 0 ? recentlyPlayed[0] : null);
 
   const artistName =
-    typeof track.artist === "object"
-      ? track.artist?.username || "Artist"
-      : track.artist || "Artist";
+    typeof track?.artist === "object"
+      ? track.artist?.username || track.artist?.name || "Artist"
+      : track?.artist || "Artist";
 
-  // Fetch free lyrics on track change or drawer open
+  // Fetch free lyrics via backend endpoint strictly using process.env
   useEffect(() => {
     if (!showLyrics || !track?.title) return;
 
@@ -89,15 +86,12 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
     async function fetchLyrics() {
       setLoadingLyrics(true);
       try {
-        const cleanArtist = encodeURIComponent(artistName);
-        const cleanTitle = encodeURIComponent(track.title);
-        const res = await fetch(
-          `https://api.lyrics.ovh/v1/${cleanArtist}/${cleanTitle}`
+        const res = await api.get(
+          `/music/lyrics?artist=${encodeURIComponent(artistName)}&title=${encodeURIComponent(track.title)}`
         );
-        const data = await res.json();
         if (isMounted) {
-          if (data?.lyrics) {
-            setLyrics(data.lyrics);
+          if (res.data?.lyrics) {
+            setLyrics(res.data.lyrics);
           } else {
             setLyrics(
               `♪ Listening to "${track.title}" by ${artistName} ♪\n\n(Official lyrics not currently indexed for this track.\nEnjoy the rhythm!)`
@@ -106,9 +100,7 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
         }
       } catch {
         if (isMounted) {
-          setLyrics(
-            `♪ Now Playing: ${track.title} ♪\n\nSing along and enjoy the vibe!`
-          );
+          setLyrics(`♪ Now Playing: ${track.title} ♪\n\nSing along and feel the RuVibe!`);
         }
       } finally {
         if (isMounted) setLoadingLyrics(false);
@@ -142,7 +134,7 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  const currentDuration = duration || track.duration || 1;
+  const currentDuration = duration || track?.duration || 1;
   const progressPercent = (currentTime / currentDuration) * 100;
 
   const handleSliderChange = (e) => {
@@ -183,13 +175,41 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
     setShowSleepMenu(false);
   };
 
+  // Standby Empty State (Only if no track has ever been played)
+  if (!track) {
+    return (
+      <aside className="relative w-80 h-screen bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col justify-between select-none shrink-0 z-20 text-center">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+          <h2 className="text-xs font-bold text-gray-400 tracking-wider uppercase">
+            Now Playing
+          </h2>
+        </div>
+
+        <div className="flex flex-col items-center justify-center my-auto">
+          <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center text-gray-500 mb-3 shadow-inner">
+            <Disc size={28} className="animate-pulse text-gray-400" />
+          </div>
+          <p className="text-sm font-bold text-white mb-1">No Track Playing</p>
+          <p className="text-xs text-gray-500 max-w-[200px]">
+            Select any song, artist, or album from Explore to start listening.
+          </p>
+        </div>
+
+        <div className="text-[10px] text-gray-600 font-mono">
+          RuVibe Audio Engine Ready
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className="relative w-80 h-screen bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0 z-20">
       {/* 1. Top Header with Queue + Full Screen */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <span className={`w-2 h-2 rounded-full ${isPlaying ? "bg-blue-500 animate-pulse" : "bg-gray-500"}`}></span>
             <h2 className="text-xs font-bold text-gray-300 tracking-wider uppercase">
               Now Playing
             </h2>
