@@ -21,7 +21,7 @@ export const usePlayerStore = create((set, get) => ({
   currentIndex: 0,        // Position in queue
   isShuffle: false,       // Shuffle active?
   isRepeat: false,        // Repeat active?
-  recentlyPlayed: getSavedRecent(), // Persisted recent songs list
+  recentlyPlayed: getSavedRecent(),
 
   // Helper to record history
   addToRecent: (track) => {
@@ -49,8 +49,6 @@ export const usePlayerStore = create((set, get) => ({
     }
 
     const idx = currentQueue.findIndex((t) => t._id === track._id);
-
-    // Save to history
     get().addToRecent(track);
 
     set({
@@ -151,5 +149,43 @@ export const usePlayerStore = create((set, get) => ({
 
   setQueue: (tracks) => {
     set({ queue: tracks });
+  },
+
+  // 🌟 7. Add to the end of the Queue
+  addToQueue: (track) => {
+    if (!track?._id) return;
+    set((state) => ({
+      queue: [...state.queue, track],
+    }));
+  },
+
+  // 🌟 8. Play Next (Inserts directly after currently playing song)
+  playNextInQueue: (track) => {
+    if (!track?._id) return;
+    set((state) => {
+      const newQueue = [...state.queue];
+      newQueue.splice(state.currentIndex + 1, 0, track);
+      return { queue: newQueue };
+    });
+  },
+
+  // 🌟 9. Remove track from Queue by index
+  removeFromQueueByIndex: (indexToRemove) => {
+    set((state) => {
+      const newQueue = state.queue.filter((_, i) => i !== indexToRemove);
+      let newIndex = state.currentIndex;
+      if (indexToRemove < state.currentIndex) {
+        newIndex = Math.max(0, state.currentIndex - 1);
+      }
+      return { queue: newQueue, currentIndex: newIndex };
+    });
+  },
+
+  // 🌟 10. Clear upcoming Queue
+  clearUpcomingQueue: () => {
+    set((state) => ({
+      queue: state.currentTrack ? [state.currentTrack] : [],
+      currentIndex: 0,
+    }));
   },
 }));

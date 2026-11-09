@@ -15,6 +15,7 @@ import {
   X,
   Music,
   Maximize2,
+  Trash2,
 } from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
 
@@ -36,7 +37,10 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
     setVolume,
     toggleMute,
     queue,
+    currentIndex,
     playTrack,
+    removeFromQueueByIndex,
+    clearUpcomingQueue,
   } = usePlayerStore();
 
   const [showLyrics, setShowLyrics] = useState(false);
@@ -116,6 +120,9 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
   const VolumeIcon =
     isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
+  // Upcoming tracks in queue (after current track)
+  const upcomingTracks = queue.slice(currentIndex + 1);
+
   return (
     <aside className="relative w-80 h-screen bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0 z-20">
       {/* 1. Top Header with Queue + Full Screen */}
@@ -144,7 +151,6 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
               <ListMusic size={18} />
             </button>
 
-            {/* Full-Screen Ambient Mode Toggle */}
             <button
               onClick={onOpenFullScreen}
               title="Full-Screen Mode (F)"
@@ -233,7 +239,6 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
       <div className="bg-gradient-to-b from-blue-600 to-blue-700 rounded-3xl p-5 shadow-xl shadow-blue-600/25 border border-blue-400/20 text-white flex flex-col items-center">
         {/* Buttons Row */}
         <div className="w-full flex items-center justify-between px-2 mb-3">
-          {/* Shuffle Toggle */}
           <button
             onClick={toggleShuffle}
             title={isShuffle ? "Shuffle ON" : "Shuffle OFF"}
@@ -246,7 +251,6 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
             <Shuffle size={16} />
           </button>
 
-          {/* Previous Button */}
           <button
             onClick={playPrevious}
             title="Previous track"
@@ -255,7 +259,6 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
             <SkipBack size={20} fill="currentColor" />
           </button>
 
-          {/* Big White Circular Play/Pause Button */}
           <button
             onClick={togglePlay}
             className="w-13 h-13 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-2xl hover:scale-105 active:scale-90 transition-transform cursor-pointer"
@@ -267,7 +270,6 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
             )}
           </button>
 
-          {/* Next Button */}
           <button
             onClick={playNext}
             title="Next track"
@@ -276,7 +278,6 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
             <SkipForward size={20} fill="currentColor" />
           </button>
 
-          {/* Repeat Toggle */}
           <button
             onClick={toggleRepeat}
             title={isRepeat ? "Repeat Track ON" : "Repeat OFF"}
@@ -286,7 +287,7 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Repeat size={16} />
+            <Repeat size={18} />
           </button>
         </div>
 
@@ -308,63 +309,118 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
         </button>
       </div>
 
-      {/* 7. SLIDE-UP OVERLAY: Up Next Queue Drawer */}
+      {/* 7. SLIDE-UP OVERLAY: Live Queue Management Drawer */}
       {showQueue && (
         <div className="absolute inset-0 bg-[#14151f]/95 backdrop-blur-xl z-30 p-5 flex flex-col animate-fadeIn">
+          {/* Header */}
           <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <ListMusic size={16} className="text-blue-500" />
-              Queue ({queue.length} songs)
+              Queue ({queue.length})
             </h3>
-            <button
-              onClick={() => setShowQueue(false)}
-              className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              {upcomingTracks.length > 0 && (
+                <button
+                  onClick={clearUpcomingQueue}
+                  className="text-[11px] font-semibold text-gray-400 hover:text-red-400 cursor-pointer transition-colors"
+                >
+                  Clear Upcoming
+                </button>
+              )}
+              <button
+                onClick={() => setShowQueue(false)}
+                className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
-            {queue.map((song, i) => {
-              const isCurrent = song._id === track._id;
-              const songArtist =
-                typeof song.artist === "object"
-                  ? song.artist?.username
-                  : song.artist;
-
-              return (
-                <div
-                  key={song._id || i}
-                  onClick={() => playTrack(song, queue)}
-                  className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
-                    isCurrent
-                      ? "bg-blue-600/20 border border-blue-500/30 text-white"
-                      : "hover:bg-white/5 text-gray-400 hover:text-white"
-                  }`}
-                >
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            {/* Section A: Now Playing Track */}
+            {track && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 px-1">
+                  Now Playing
+                </span>
+                <div className="mt-1.5 flex items-center gap-3 p-2.5 rounded-2xl bg-blue-600/20 border border-blue-500/30 text-white">
                   <img
-                    src={song.coverArt || "https://via.placeholder.com/100"}
-                    alt={song.title}
+                    src={track.coverArt || "https://via.placeholder.com/100"}
+                    alt={track.title}
                     className="w-10 h-10 rounded-xl object-cover"
                   />
                   <div className="flex-1 min-w-0">
-                    <p
-                      className={`text-xs font-semibold truncate ${
-                        isCurrent ? "text-blue-400 font-bold" : "text-white"
-                      }`}
-                    >
-                      {song.title}
+                    <p className="text-xs font-bold text-blue-400 truncate">
+                      {track.title}
                     </p>
-                    <p className="text-[10px] text-gray-500 truncate mt-0.5">
-                      {songArtist}
+                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                      {artistName}
                     </p>
                   </div>
-                  {isCurrent && isPlaying && (
+                  {isPlaying && (
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse mr-1"></span>
                   )}
                 </div>
-              );
-            })}
+              </div>
+            )}
+
+            {/* Section B: Next In Queue */}
+            <div>
+              <div className="flex items-center justify-between px-1 mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Next in Queue ({upcomingTracks.length})
+                </span>
+              </div>
+
+              {upcomingTracks.length === 0 ? (
+                <p className="text-xs text-gray-500 py-6 text-center italic">
+                  No upcoming songs. Use "Add to Queue" on any song to queue it up!
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {upcomingTracks.map((song, i) => {
+                    const actualIndex = currentIndex + 1 + i;
+                    const songArtist =
+                      typeof song.artist === "object"
+                        ? song.artist?.username
+                        : song.artist;
+
+                    return (
+                      <div
+                        key={song._id || actualIndex}
+                        onClick={() => playTrack(song, queue)}
+                        className="group flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-all text-gray-400 hover:text-white"
+                      >
+                        <img
+                          src={song.coverArt || "https://via.placeholder.com/100"}
+                          alt={song.title}
+                          className="w-9 h-9 rounded-lg object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">
+                            {song.title}
+                          </p>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            {songArtist}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFromQueueByIndex(actualIndex);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 p-1 transition-all cursor-pointer"
+                          title="Remove from queue"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

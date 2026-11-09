@@ -1,50 +1,45 @@
-import React from "react";
-import { Play, Pause, Heart, MoreHorizontal } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Play,
+  Pause,
+  Heart,
+  MoreHorizontal,
+  ListPlus,
+  FastForward,
+  FolderPlus,
+} from "lucide-react";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useFavoritesStore } from "../store/useFavoritesStore";
+import { useToastStore } from "../store/useToastStore";
 
 export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
-  const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
-  const { toggleLike, isLiked } = useFavoritesStore();
+  const {
+    currentTrack,
+    isPlaying,
+    playTrack,
+    togglePlay,
+    addToQueue,
+    playNextInQueue,
+  } = usePlayerStore();
 
-  const chartTracks =
-    tracks && tracks.length > 0
-      ? tracks
-      : [
-          {
-            _id: "demo_1",
-            rank: "01",
-            title: "Havana",
-            artist: "Camila Cabello",
-            duration: 225,
-            durationFormatted: "3:45",
-            coverArt:
-              "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&auto=format&fit=crop&q=80",
-            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-          },
-          {
-            _id: "demo_2",
-            rank: "02",
-            title: "Jesus Is King",
-            artist: "Kanye West",
-            duration: 190,
-            durationFormatted: "3:10",
-            coverArt:
-              "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80",
-            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-          },
-          {
-            _id: "demo_3",
-            rank: "03",
-            title: "Closer",
-            artist: "The Chainsmokers",
-            duration: 245,
-            durationFormatted: "4:05",
-            coverArt:
-              "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&auto=format&fit=crop&q=80",
-            uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-          },
-        ];
+  const { toggleLike, isLiked } = useFavoritesStore();
+  const { showToast } = useToastStore();
+
+  const [activeMenuTrackId, setActiveMenuTrackId] = useState(null);
+  const menuRef = useRef(null);
+
+  const chartTracks = tracks && tracks.length > 0 ? tracks : [];
+
+  // Close floating menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setActiveMenuTrackId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleRowClick = (track) => {
     if (currentTrack?._id === track._id) {
@@ -54,23 +49,43 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
     }
   };
 
+  const handlePlayNext = (e, track) => {
+    e.stopPropagation();
+    playNextInQueue(track);
+    setActiveMenuTrackId(null);
+    showToast(`Will play next: ${track.title}`);
+  };
+
+  const handleAddToQueue = (e, track) => {
+    e.stopPropagation();
+    addToQueue(track);
+    setActiveMenuTrackId(null);
+    showToast(`Added to queue: ${track.title}`);
+  };
+
   return (
     <div className="select-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold text-white tracking-wide">
-          Top Charts
-        </h2>
-        <span className="text-xs text-gray-400 font-medium">
-          Popular tracks
+        <div>
+          <h2 className="text-base font-bold text-white tracking-wide">
+            Top Charts
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            The most played songs right now
+          </p>
+        </div>
+        <span className="text-xs text-gray-400 font-medium font-mono">
+          {chartTracks.length} tracks
         </span>
       </div>
 
       {/* Track List Table */}
-      <div className="space-y-1.5">
-        {chartTracks.slice(0, 5).map((track, index) => {
+      <div className="space-y-1.5 relative">
+        {chartTracks.slice(0, 10).map((track, index) => {
           const isThisTrackCurrent = currentTrack?._id === track._id;
           const isThisTrackPlaying = isThisTrackCurrent && isPlaying;
+          const isMenuOpen = activeMenuTrackId === track._id;
 
           const artistName =
             typeof track.artist === "object"
@@ -83,15 +98,14 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
             <div
               key={track._id || index}
               onClick={() => handleRowClick(track)}
-              className={`group flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer ${
+              className={`group relative flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
                 isThisTrackCurrent
-                  ? "bg-blue-600/15 border border-blue-500/20"
+                  ? "bg-blue-600/15 border border-blue-500/25"
                   : "hover:bg-[#181a26] border border-transparent"
               }`}
             >
               {/* Left: Rank / Equalizer + Thumbnail + Title/Artist */}
-              <div className="flex items-center gap-3 min-w-0">
-                {/* Dynamic Rank / Soundwave */}
+              <div className="flex items-center gap-4 min-w-0">
                 <div className="w-5 text-center flex items-center justify-center shrink-0">
                   {isThisTrackPlaying ? (
                     <div className="flex items-end gap-0.5 h-3.5">
@@ -105,7 +119,7 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
                         isThisTrackCurrent ? "text-blue-400 font-bold" : "text-gray-500"
                       }`}
                     >
-                      {track.rank || `0${index + 1}`}
+                      {track.rank || String(index + 1).padStart(2, "0")}
                     </span>
                   )}
                 </div>
@@ -116,7 +130,6 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
                     alt={track.title}
                     className="w-full h-full object-cover"
                   />
-                  {/* Hover Play/Pause Overlay */}
                   <div
                     className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
                       isThisTrackPlaying
@@ -134,20 +147,24 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
 
                 <div className="min-w-0">
                   <p
-                    className={`text-xs font-semibold truncate ${
+                    className={`text-sm font-semibold truncate ${
                       isThisTrackCurrent ? "text-blue-400 font-bold" : "text-white"
                     }`}
                   >
                     {track.title}
                   </p>
-                  <p className="text-[11px] text-gray-400 truncate mt-0.5">
-                    {artistName}
+                  <p className="text-xs text-gray-400 truncate mt-0.5">
+                    {artistName} {track.album ? `• ${track.album}` : ""}
                   </p>
                 </div>
               </div>
 
-              {/* Right: Duration + Heart + Menu */}
-              <div className="flex items-center gap-3 shrink-0">
+              {/* Right: Plays + Duration + Heart + Menu */}
+              <div className="flex items-center gap-4 shrink-0 relative">
+                <span className="text-xs text-gray-500 hidden sm:inline font-medium">
+                  {track.plays || "Popular"}
+                </span>
+
                 <span className="text-[11px] text-gray-400 font-mono">
                   {track.durationFormatted ||
                     (track.duration
@@ -157,40 +174,75 @@ export default function TopCharts({ tracks, onOpenAddToPlaylist }) {
                       : "3:45")}
                 </span>
 
-                {/* Heart / Favorite Button */}
+                {/* Heart Button */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (toggleLike) toggleLike(track);
                   }}
-                  className={`transition-all active:scale-125 cursor-pointer p-1 rounded-lg hover:bg-white/5 ${
+                  className={`transition-all active:scale-125 cursor-pointer p-1.5 rounded-lg hover:bg-white/5 ${
                     trackIsLiked
                       ? "text-red-500"
                       : "text-gray-500 hover:text-red-400"
                   }`}
-                  title={
-                    trackIsLiked ? "Remove from Favorites" : "Add to Favorites"
-                  }
+                  title={trackIsLiked ? "Remove from Favorites" : "Add to Favorites"}
                 >
                   <Heart
-                    size={15}
+                    size={16}
                     fill={trackIsLiked ? "currentColor" : "none"}
                   />
                 </button>
 
-                {/* More / Add to Playlist */}
+                {/* 3-Dots Button */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (onOpenAddToPlaylist) onOpenAddToPlaylist(track);
+                    setActiveMenuTrackId(isMenuOpen ? null : track._id);
                   }}
-                  className="text-gray-500 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-white/10"
-                  title="Add to Playlist"
+                  className="text-gray-500 hover:text-white transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white/10"
+                  title="More actions"
                 >
-                  <MoreHorizontal size={14} />
+                  <MoreHorizontal size={15} />
                 </button>
+
+                {/* Floating Context Dropdown Menu */}
+                {isMenuOpen && (
+                  <div
+                    ref={menuRef}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-10 w-44 bg-[#1a1c28] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-fadeIn space-y-0.5"
+                  >
+                    <button
+                      onClick={(e) => handlePlayNext(e, track)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <FastForward size={14} className="text-blue-400" />
+                      <span>Play Next</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => handleAddToQueue(e, track)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <ListPlus size={14} className="text-emerald-400" />
+                      <span>Add to Queue</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuTrackId(null);
+                        if (onOpenAddToPlaylist) onOpenAddToPlaylist(track);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <FolderPlus size={14} className="text-purple-400" />
+                      <span>Add to Playlist</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           );
