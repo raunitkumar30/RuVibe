@@ -19,7 +19,14 @@ import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { useToastStore } from "../store/useToastStore";
 
-export default function Sidebar({ currentView, onSelectView, onSelectPlaylist }) {
+export default function Sidebar({
+  currentView,
+  onSelectView,
+  activeTab,
+  setActiveTab,
+  onSelectPlaylist,
+  onRequireAuth,
+}) {
   const [playlists, setPlaylists] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
@@ -27,6 +34,16 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
 
   const { isAuthenticated } = useAuthStore();
   const { showToast } = useToastStore();
+
+  // Active view fallback helper
+  const active = currentView || activeTab || "explore";
+
+  // Unified click handler supporting all prop variations & normalizing 'favourites'
+  const handleSelect = (viewId) => {
+    const normalized = viewId === "favourites" ? "favorites" : viewId;
+    if (onSelectView) onSelectView(normalized);
+    if (setActiveTab) setActiveTab(normalized);
+  };
 
   const menuItems = [
     { id: "explore", label: "Explore", icon: Compass },
@@ -39,7 +56,7 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
   const libraryItems = [
     { id: "recent", label: "Recent", icon: Clock },
     { id: "albums", label: "Albums", icon: Folder },
-    { id: "favourites", label: "Favourites", icon: Heart },
+    { id: "favorites", label: "Favourites", icon: Heart },
     { id: "local", label: "Local", icon: Disc },
   ];
 
@@ -121,7 +138,7 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
       <div>
         {/* Brand Logo */}
         <div
-          onClick={() => onSelectView && onSelectView("explore")}
+          onClick={() => handleSelect("explore")}
           className="flex items-center gap-2 mb-8 px-2 cursor-pointer"
         >
           <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
@@ -140,12 +157,12 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
           <nav className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = (currentView || "explore") === item.id;
+              const isActive = active === item.id;
 
               return (
                 <button
                   key={item.id}
-                  onClick={() => onSelectView && onSelectView(item.id)}
+                  onClick={() => handleSelect(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                     isActive
                       ? "text-blue-500 bg-blue-500/10 font-semibold"
@@ -168,12 +185,12 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
           <nav className="space-y-1">
             {libraryItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentView === item.id;
+              const isActive = active === item.id;
 
               return (
                 <button
                   key={item.id}
-                  onClick={() => onSelectView && onSelectView(item.id)}
+                  onClick={() => handleSelect(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                     isActive
                       ? "text-blue-500 bg-blue-500/10 font-semibold"
@@ -245,7 +262,8 @@ export default function Sidebar({ currentView, onSelectView, onSelectPlaylist })
           {/* Playlists List */}
           <div className="space-y-1">
             {playlists.map((playlist, idx) => {
-              const playlistName = typeof playlist === "string" ? playlist : playlist.name;
+              const playlistName =
+                typeof playlist === "string" ? playlist : playlist.name;
               return (
                 <button
                   key={playlist._id || idx}

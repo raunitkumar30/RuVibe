@@ -35,7 +35,7 @@ export default function App() {
   const [playlistTrackToAdd, setPlaylistTrackToAdd] = useState(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [isFullScreenOpen, setIsFullScreenOpen] = useState(false); // Full-Screen State
+  const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
   const [tracks, setTracks] = useState([]);
   const [activeFilter, setActiveFilter] = useState("");
 
@@ -44,6 +44,11 @@ export default function App() {
     isPlaying,
     volume,
     isMuted,
+    playbackRate,
+    sleepTimer,
+    sleepTimerRemaining,
+    cancelSleepTimer,
+    tickSleepTimer,
     setCurrentTime,
     setDuration,
     togglePlay,
@@ -55,7 +60,7 @@ export default function App() {
 
   const { isAuthenticated, checkAuth } = useAuthStore();
   const { fetchLikedSongs, toggleLike } = useFavoritesStore();
-  const { toast } = useToastStore();
+  const { toast, showToast } = useToastStore();
 
   // 1. Check existing session ONCE on mount
   useEffect(() => {
@@ -87,14 +92,36 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
-  // 4. Volume Synchronization
+  // 4. Volume & Playback Rate Synchronization
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
+      audioRef.current.playbackRate = playbackRate || 1.0;
     }
-  }, [volume, isMuted]);
+  }, [volume, isMuted, playbackRate]);
 
-  // 5. Global Spotify Desktop Keyboard Shortcuts
+  // 5. Sleep Timer Countdown Interval
+  useEffect(() => {
+    if (!isPlaying || sleepTimerRemaining === null) return;
+
+    if (sleepTimerRemaining <= 0) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      usePlayerStore.setState({ isPlaying: false });
+      cancelSleepTimer();
+      showToast("🌙 Sleep timer ended. Music paused. Goodnight!", "info");
+      return;
+    }
+
+    const interval = setInterval(() => {
+      tickSleepTimer();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, sleepTimerRemaining, tickSleepTimer, cancelSleepTimer, showToast]);
+
+  // 6. Global Spotify Desktop Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (
@@ -141,7 +168,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentTrack, togglePlay, playNext, playPrevious, toggleMute, toggleLike]);
 
-  // 6. Filter by Keyword
+  // 7. Filter by Keyword
   const handleFilterMusic = async (filterKeyword) => {
     if (!filterKeyword) return;
     setActiveFilter(filterKeyword);
@@ -158,7 +185,7 @@ export default function App() {
     }
   };
 
-  // 7. Audio synchronization with HTML5 Audio element
+  // 8. Audio synchronization with HTML5 Audio element
   useEffect(() => {
     if (!audioRef.current) return;
 
@@ -196,6 +223,18 @@ export default function App() {
     }
   };
 
+  const handleTrackEnded = () => {
+    if (sleepTimer === "end_of_track") {
+      if (audioRef.current) audioRef.current.pause();
+      usePlayerStore.setState({ isPlaying: false });
+      cancelSleepTimer();
+      showToast("🌙 Track finished. Sleep timer completed.", "info");
+      return;
+    }
+    playNext();
+  };
+
+  // Dynamic active tab name
   const activeCategory =
     currentView === "radio"
       ? "LIVE"
@@ -203,21 +242,20 @@ export default function App() {
       ? "PODCAST"
       : "MUSIC";
 
+  const handleNavigateView = (viewName) => {
+    setCurrentView(viewName);
+    setSelectedPlaylist(null);
+    setSelectedArtist(null);
+  };
+
   return (
     <div className="flex h-screen w-screen bg-[#11121a] text-white overflow-hidden select-none relative">
-      {/* Hidden Native Audio Element (Autoplay next song on ended) */}
+      {/* Hidden Native Audio Element */}
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onEnded={() => playNext()}
-      />
-
-      {/* Full-Screen Ambient / Karaoke Player Modal */}
-      <FullScreenPlayer
-        isOpen={isFullScreenOpen}
-        onClose={() => setIsFullScreenOpen(false)}
-        onSeek={handleSeek}
+        onEnded={handleTrackEnded}
       />
 
       {/* Floating Animated Toast Notification */}
@@ -234,96 +272,51 @@ export default function App() {
         </div>
       )}
 
-      {/* Auth Modal Popup */}
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-
-      {/* Upload Modal Popup (for Artists) */}
-      <UploadModal
-        isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
-        onUploadSuccess={(newSong) => {
-          setTracks((prev) => [newSong, ...prev]);
-          setQueue([newSong, ...tracks]);
-        }}
-      />
-
-      {/* Add To Playlist Modal Popup */}
-      <AddToPlaylistModal
-        isOpen={Boolean(playlistTrackToAdd)}
-        onClose={() => setPlaylistTrackToAdd(null)}
-        track={playlistTrackToAdd}
+      {/* Full-Screen Ambient / Karaoke Player Modal */}
+      <FullScreenPlayer
+        isOpen={isFullScreenOpen}
+        onClose={() => setIsFullScreenOpen(false)}
+        onSeek={handleSeek}
       />
 
       {/* COLUMN 1: Left Sidebar */}
       <Sidebar
         currentView={currentView}
-        onSelectView={(view) => {
-          if (view === "artists") setSelectedArtist(null);
-          setCurrentView(view);
-        }}
-        onSelectPlaylist={(playlist) => {
-          setSelectedPlaylist(playlist);
+        activeTab={currentView}
+        onSelectView={handleNavigateView}
+        setActiveTab={handleNavigateView}
+        onSelectPlaylist={(pl) => {
+          setSelectedPlaylist(pl);
           setCurrentView("playlist");
         }}
+        onRequireAuth={() => setIsAuthOpen(true)}
       />
 
-      {/* COLUMN 2: Center Scrollable Dashboard */}
+      {/* COLUMN 2: Center Dashboard (Navbar pinned to top, scrollable view underneath) */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Navbar ALWAYS at the very top */}
         <Navbar
           onOpenAuth={() => setIsAuthOpen(true)}
           onOpenUpload={() => setIsUploadOpen(true)}
           currentCategory={activeCategory}
+          activeCategory={activeCategory}
           onSelectCategory={(tab) => {
-            if (tab === "LIVE") setCurrentView("radio");
-            else if (tab === "PODCAST") setCurrentView("podcast");
-            else setCurrentView("explore");
+            if (tab === "LIVE") handleNavigateView("radio");
+            else if (tab === "PODCAST") handleNavigateView("podcast");
+            else handleNavigateView("explore");
+          }}
+          onFilterMusic={handleFilterMusic}
+          onSelectArtist={(artist) => {
+            setSelectedArtist(artist);
+            setCurrentView("artist-profile");
           }}
         />
 
-        <main className="flex-1 overflow-y-auto px-8 pb-10 space-y-7 scrollbar-thin scrollbar-thumb-white/10">
-          {currentView === "favourites" ? (
-            /* View A: Liked Songs Screen */
-            <FavoritesView />
-          ) : currentView === "playlist" ? (
-            /* View B: Playlist Screen */
-            <PlaylistView
-              playlistId={selectedPlaylist?._id}
-              playlistName={selectedPlaylist?.name}
-            />
-          ) : currentView === "albums" ? (
-            /* View C: Albums Screen */
-            <AlbumsView
-              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-            />
-          ) : currentView === "artists" ? (
-            /* View D: Artists Screen */
-            <ArtistsView
-              initialArtist={selectedArtist}
-              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-            />
-          ) : currentView === "genres" ? (
-            /* View E: Full Dedicated Genres & Moods Screen */
-            <GenresView
-              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-            />
-          ) : currentView === "recent" ? (
-            /* View F: Recently Played Screen */
-            <RecentView
-              onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-            />
-          ) : currentView === "local" ? (
-            /* View G: Local Computer Files Screen */
-            <LocalView />
-          ) : currentView === "radio" ? (
-            /* View H: Live Radio Stations Screen */
-            <RadioView />
-          ) : currentView === "podcast" ? (
-            /* View I: Podcasts & Shows Screen */
-            <PodcastView />
-          ) : (
-            /* View J: Home Dashboard */
-            <>
-              {/* Active Filter Pill */}
+        {/* Scrollable View Area below Navbar */}
+        <main className="flex-1 overflow-y-auto px-8 py-6 space-y-7 custom-scrollbar">
+          {/* VIEW 1: Explore / Home */}
+          {currentView === "explore" && (
+            <div className="space-y-6">
               {activeFilter && (
                 <div className="flex items-center justify-between bg-blue-600/10 border border-blue-500/30 px-4 py-2.5 rounded-2xl">
                   <span className="text-xs font-semibold text-blue-300">
@@ -340,31 +333,117 @@ export default function App() {
                 </div>
               )}
 
-              {/* Hero Banner */}
-              <HeroBanner featuredTrack={tracks[0]} allTracks={tracks} />
+              <HeroBanner onPlayMusic={() => {}} />
 
-              {/* Interactive Top Artists */}
+              {/* Dynamic Top Artists */}
               <TopArtists
-                onSelectArtist={(artistName) => {
-                  setSelectedArtist(artistName);
-                  setCurrentView("artists");
+                onSelectArtist={(artist) => {
+                  setSelectedArtist(artist);
+                  setCurrentView("artist-profile");
                 }}
               />
 
-              {/* Spacious Full-Width Top Charts */}
-              <TopCharts
-                tracks={tracks}
-                onOpenAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-              />
-            </>
+              {/* Full-Width Top Charts */}
+              <div className="w-full">
+                <TopCharts
+                  tracks={tracks}
+                  activeFilter={activeFilter}
+                  onClearFilter={fetchAllTracks}
+                  onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+                />
+              </div>
+            </div>
           )}
+
+          {/* VIEW 2: Liked Songs */}
+          {(currentView === "favorites" || currentView === "favourites") && (
+            <FavoritesView
+              onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+            />
+          )}
+
+          {/* VIEW 3: Custom Playlist View */}
+          {currentView === "playlist" && selectedPlaylist && (
+            <PlaylistView
+              playlist={selectedPlaylist}
+              onBack={() => handleNavigateView("explore")}
+            />
+          )}
+
+          {/* VIEW 4: Verified Artists Directory */}
+          {currentView === "artists" && (
+            <ArtistsView
+              onSelectArtist={(artist) => {
+                setSelectedArtist(artist);
+                setCurrentView("artist-profile");
+              }}
+            />
+          )}
+
+          {/* VIEW 5: Single Artist Profile View */}
+          {currentView === "artist-profile" && selectedArtist && (
+            <ArtistsView
+              initialArtist={selectedArtist}
+              onBack={() => handleNavigateView("explore")}
+            />
+          )}
+
+          {/* VIEW 6: Studio Albums Catalog */}
+          {currentView === "albums" && <AlbumsView />}
+
+          {/* VIEW 7: Recently Played History */}
+          {currentView === "recent" && <RecentView />}
+
+          {/* VIEW 8: Browse All Genres */}
+          {currentView === "genres" && (
+            <GenresView
+              onSelectGenre={(genre) => {
+                handleFilterMusic(genre);
+                handleNavigateView("explore");
+              }}
+            />
+          )}
+
+          {/* VIEW 9: Local Audio Files (Drag & Drop) */}
+          {currentView === "local" && <LocalView />}
+
+          {/* VIEW 10: Live Streaming Radio Stations */}
+          {currentView === "radio" && <RadioView />}
+
+          {/* VIEW 11: Real Podcast Episodes Streaming */}
+          {currentView === "podcast" && <PodcastView />}
         </main>
       </div>
 
-      {/* COLUMN 3: Right Player Card */}
+      {/* COLUMN 3: Right Persistent Now Playing Dock */}
       <RightPlayer
         onSeek={handleSeek}
         onOpenFullScreen={() => setIsFullScreenOpen(true)}
+      />
+
+      {/* Add To Playlist Floating Modal */}
+      {playlistTrackToAdd && (
+        <AddToPlaylistModal
+          track={playlistTrackToAdd}
+          onClose={() => setPlaylistTrackToAdd(null)}
+          onRequireAuth={() => {
+            setPlaylistTrackToAdd(null);
+            setIsAuthOpen(true);
+          }}
+        />
+      )}
+
+      {/* User Auth Modal */}
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
+      {/* Song / Album Upload Modal */}
+      <UploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUploadSuccess={() => {
+          setIsUploadOpen(false);
+          fetchAllTracks();
+        }}
       />
     </div>
   );

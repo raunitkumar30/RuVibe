@@ -17,6 +17,9 @@ export const usePlayerStore = create((set, get) => ({
   duration: 0,            // Total duration in seconds
   volume: 0.8,            // Default volume: 80% (0.0 to 1.0)
   isMuted: false,         // Mute toggle
+  playbackRate: 1.0,      // Playback speed: 0.75, 1, 1.25, 1.5, 2
+  sleepTimer: null,       // null | 'end_of_track' | number (minutes)
+  sleepTimerRemaining: null, // Seconds remaining on timer
   queue: [],              // Full list of tracks in current view
   currentIndex: 0,        // Position in queue
   isShuffle: false,       // Shuffle active?
@@ -129,7 +132,7 @@ export const usePlayerStore = create((set, get) => ({
     set((state) => ({ isRepeat: !state.isRepeat }));
   },
 
-  // 6. Volume Controls
+  // 6. Volume & Playback Controls
   setVolume: (val) => {
     const clamped = Math.max(0, Math.min(1, val));
     set({ volume: clamped, isMuted: clamped === 0 });
@@ -137,6 +140,32 @@ export const usePlayerStore = create((set, get) => ({
 
   toggleMute: () => {
     set((state) => ({ isMuted: !state.isMuted }));
+  },
+
+  setPlaybackRate: (rate) => {
+    set({ playbackRate: rate });
+  },
+
+  // 🌙 7. Sleep Timer Controls
+  setSleepTimer: (option) => {
+    if (option === "end_of_track") {
+      set({ sleepTimer: "end_of_track", sleepTimerRemaining: null });
+    } else if (typeof option === "number" && option > 0) {
+      set({ sleepTimer: option, sleepTimerRemaining: option * 60 });
+    } else {
+      set({ sleepTimer: null, sleepTimerRemaining: null });
+    }
+  },
+
+  cancelSleepTimer: () => {
+    set({ sleepTimer: null, sleepTimerRemaining: null });
+  },
+
+  tickSleepTimer: () => {
+    const { sleepTimerRemaining } = get();
+    if (sleepTimerRemaining !== null && sleepTimerRemaining > 0) {
+      set({ sleepTimerRemaining: sleepTimerRemaining - 1 });
+    }
   },
 
   setCurrentTime: (time) => {
@@ -151,7 +180,7 @@ export const usePlayerStore = create((set, get) => ({
     set({ queue: tracks });
   },
 
-  // 🌟 7. Add to the end of the Queue
+  // 8. Queue Management
   addToQueue: (track) => {
     if (!track?._id) return;
     set((state) => ({
@@ -159,7 +188,6 @@ export const usePlayerStore = create((set, get) => ({
     }));
   },
 
-  // 🌟 8. Play Next (Inserts directly after currently playing song)
   playNextInQueue: (track) => {
     if (!track?._id) return;
     set((state) => {
@@ -169,7 +197,6 @@ export const usePlayerStore = create((set, get) => ({
     });
   },
 
-  // 🌟 9. Remove track from Queue by index
   removeFromQueueByIndex: (indexToRemove) => {
     set((state) => {
       const newQueue = state.queue.filter((_, i) => i !== indexToRemove);
@@ -181,7 +208,6 @@ export const usePlayerStore = create((set, get) => ({
     });
   },
 
-  // 🌟 10. Clear upcoming Queue
   clearUpcomingQueue: () => {
     set((state) => ({
       queue: state.currentTrack ? [state.currentTrack] : [],
