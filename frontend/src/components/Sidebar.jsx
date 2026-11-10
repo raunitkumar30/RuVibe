@@ -9,7 +9,6 @@ import {
   Heart,
   Folder,
   PlusSquare,
-  Speaker,
   Activity,
   Check,
   X,
@@ -31,6 +30,7 @@ export default function Sidebar({
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const { isAuthenticated } = useAuthStore();
   const { showToast } = useToastStore();
@@ -134,13 +134,31 @@ export default function Sidebar({
   return (
     <aside className="w-60 h-screen bg-[#14151f] flex flex-col justify-between p-5 border-r border-white/5 select-none overflow-y-auto shrink-0 z-20">
       <div>
-        {/* Brand Logo: RuVibe */}
+        {/* Brand Logo: RuVibe with custom favicon/logo */}
         <div
           onClick={() => handleSelect("explore")}
           className="flex items-center gap-2.5 mb-8 px-2 cursor-pointer group"
         >
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
-            <Activity size={20} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+            {!logoError ? (
+              <img
+                src="/favicon.svg"
+                alt="RuVibe Logo"
+                onError={(e) => {
+                  if (!e.target.dataset.triedFallback) {
+                    e.target.dataset.triedFallback = "true";
+                    e.target.src = "/favicon-96x96.png";
+                  } else {
+                    setLogoError(true);
+                  }
+                }}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                <Activity size={20} />
+              </div>
+            )}
           </div>
           <span className="text-xl font-extrabold tracking-tight text-white font-sans">
             Ru<span className="text-blue-500">Vibe</span>
@@ -203,36 +221,37 @@ export default function Sidebar({
           </nav>
         </div>
 
-        {/* PLAYLIST SECTION */}
-        <div className="mb-4">
-          <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase px-2 mb-2">
-            Playlist
-          </p>
+        {/* PLAYLISTS SECTION */}
+        <div>
+          <div className="flex items-center justify-between px-2 mb-2">
+            <p className="text-[11px] font-semibold tracking-wider text-gray-500 uppercase">
+              Playlists
+            </p>
+            <button
+              onClick={() => setIsCreating(true)}
+              className="text-gray-400 hover:text-white transition-colors cursor-pointer"
+              title="Create Playlist"
+            >
+              <PlusSquare size={16} />
+            </button>
+          </div>
 
-          <button
-            onClick={() => setIsCreating(true)}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all mb-2 cursor-pointer"
-          >
-            <PlusSquare size={18} className="text-blue-500" />
-            <span>Create New</span>
-          </button>
-
+          {/* In-line Create Playlist Input */}
           {isCreating && (
-            <form onSubmit={handleCreateSubmit} className="mb-2 px-1 animate-fadeIn">
-              <div className="flex items-center gap-1 bg-[#1c1e2b] border border-blue-500/50 rounded-xl p-1 shadow-lg">
+            <form onSubmit={handleCreateSubmit} className="mb-2 px-1">
+              <div className="flex items-center gap-1.5 bg-[#1e202e] border border-blue-500/50 rounded-lg p-1.5">
                 <input
                   type="text"
-                  placeholder="Playlist name..."
+                  autoFocus
                   value={newPlaylistName}
                   onChange={(e) => setNewPlaylistName(e.target.value)}
-                  autoFocus
-                  className="flex-1 bg-transparent text-xs text-white placeholder-gray-500 px-2 py-1 outline-none min-w-0"
+                  placeholder="Playlist name..."
+                  className="bg-transparent text-xs text-white placeholder-gray-500 outline-none w-full px-1.5 py-0.5"
                 />
                 <button
                   type="submit"
                   disabled={loadingCreate}
-                  className="p-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white cursor-pointer shrink-0"
-                  title="Save Playlist"
+                  className="text-blue-400 hover:text-blue-300 p-1 rounded disabled:opacity-50 cursor-pointer"
                 >
                   {loadingCreate ? (
                     <Loader2 size={13} className="animate-spin" />
@@ -246,8 +265,7 @@ export default function Sidebar({
                     setIsCreating(false);
                     setNewPlaylistName("");
                   }}
-                  className="p-1 rounded-lg text-gray-400 hover:text-white cursor-pointer shrink-0"
-                  title="Cancel"
+                  className="text-gray-400 hover:text-white p-1 rounded cursor-pointer"
                 >
                   <X size={13} />
                 </button>
@@ -256,39 +274,32 @@ export default function Sidebar({
           )}
 
           <div className="space-y-1">
-            {playlists.map((playlist, idx) => {
-              const playlistName =
-                typeof playlist === "string" ? playlist : playlist.name;
-              return (
-                <button
-                  key={playlist._id || idx}
-                  onClick={() => {
-                    if (onSelectPlaylist) onSelectPlaylist(playlist);
-                  }}
-                  className="w-full text-left px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all truncate cursor-pointer"
-                >
-                  {playlistName}
-                </button>
-              );
-            })}
+            {playlists.map((pl) => (
+              <button
+                key={pl._id}
+                onClick={() => {
+                  if (onSelectPlaylist) onSelectPlaylist(pl);
+                  if (onSelectView) onSelectView("playlist");
+                  if (setActiveTab) setActiveTab("playlist");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all text-left cursor-pointer ${
+                  active === "playlist"
+                    ? "text-blue-400 bg-white/5"
+                    : "text-gray-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span className="truncate">{pl.name}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* BOTTOM PLAYING ON DEVICE WIDGET */}
-      <div className="bg-[#1c1e2b] p-3 rounded-2xl flex items-center gap-3 border border-white/5">
-        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-gray-300">
-          <Speaker size={18} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-white truncate">
-            Google Homepod
-          </p>
-          <div className="flex items-center gap-1.5 text-[10px] text-blue-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-            <span>Playing on RuVibe</span>
-          </div>
-        </div>
+      {/* General/Settings Footer */}
+      <div className="border-t border-white/5 pt-4">
+        <p className="text-[10px] text-gray-500 px-2 tracking-wide uppercase">
+          RuVibe Player &copy; 2026
+        </p>
       </div>
     </aside>
   );
