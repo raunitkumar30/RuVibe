@@ -465,6 +465,7 @@ export default function App() {
       {/* Add To Playlist Floating Modal */}
       {playlistTrackToAdd && (
         <AddToPlaylistModal
+          isOpen={true}
           track={playlistTrackToAdd}
           onClose={() => setPlaylistTrackToAdd(null)}
           onRequireAuth={() => {

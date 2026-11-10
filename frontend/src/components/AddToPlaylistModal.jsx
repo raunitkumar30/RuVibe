@@ -12,8 +12,10 @@ export default function AddToPlaylistModal({ isOpen, onClose, track }) {
 
   const { showToast } = useToastStore();
 
+  const isModalOpen = isOpen !== undefined ? isOpen : Boolean(track);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isModalOpen) return;
 
     async function loadPlaylists() {
       setLoading(true);
@@ -40,9 +42,9 @@ export default function AddToPlaylistModal({ isOpen, onClose, track }) {
     }
 
     loadPlaylists();
-  }, [isOpen, track]);
+  }, [isModalOpen, track]);
 
-  if (!isOpen || !track) return null;
+  if (!isModalOpen || !track) return null;
 
   const handleAddToPlaylist = async (playlistId, playlistName = "Playlist") => {
     try {

@@ -37,7 +37,7 @@ const upload = multer({
 
 const router = express.Router();
 
-// 🌐 Public Endpoints
+// Public Endpoints
 router.get("/", asyncHandler(musicController.getAllMusics));
 router.get("/top-artists", asyncHandler(musicController.getTopArtists));
 router.get("/search", asyncHandler(musicController.searchMusic));
@@ -47,9 +47,8 @@ router.get("/lyrics", asyncHandler(musicController.getLyrics));
 router.get("/albums", asyncHandler(musicController.getAllAlbums));
 router.get("/albums/:albumId", asyncHandler(musicController.getAlbumById));
 
-// 🔒 Protected Endpoints (Specific routes defined before parameterized wildcards)
+// Protected Endpoints (Specific routes defined before parameterized wildcards)
 router.get("/liked", authMiddleware.authUser, asyncHandler(musicController.getLikedMusics));
-router.post("/logout", authMiddleware.authUser, asyncHandler(musicController.logoutUser));
 router.post(
   "/upload",
   authMiddleware.authArtist,

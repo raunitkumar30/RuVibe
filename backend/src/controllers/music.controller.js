@@ -3,7 +3,6 @@ const albumModel = require("../models/album.model");
 const userModel = require("../models/user.model");
 const {
   uploadFile,
-  decryptJioSaavnUrl,
 } = require("../services/storage.service");
 const {
   getTrackMetadata,
@@ -243,21 +242,11 @@ async function getAlbumById(req, res) {
   res.status(404).json({ message: "Album not found" });
 }
 
-// 7. Logout User
-async function logoutUser(req, res) {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  });
-  res.status(200).json({ message: "Logged out successfully" });
-}
-
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// 8. Search Music
+// 7. Search Music
 async function searchMusic(req, res) {
   const { q } = req.query;
 
@@ -418,7 +407,6 @@ module.exports = {
   getAllMusics,
   getAllAlbums,
   getAlbumById,
-  logoutUser,
   searchMusic,
   searchPodcasts,
   getRadioStations,

@@ -1,23 +1,35 @@
 import React, { useEffect, useState } from "react";
-import { ListMusic, Play, Pause, Heart, Loader2 } from "lucide-react";
+import { ListMusic, Play, Pause, Heart, Loader2, ArrowLeft } from "lucide-react";
 import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useFavoritesStore } from "../store/useFavoritesStore";
 
-export default function PlaylistView({ playlistId, playlistName }) {
-  const [playlist, setPlaylist] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function PlaylistView({ playlist: initialPlaylist, playlistId, playlistName, onBack }) {
+  const [playlist, setPlaylist] = useState(initialPlaylist || null);
+  const [loading, setLoading] = useState(!initialPlaylist?.musics?.length);
+
+  const activeId = playlistId || initialPlaylist?._id;
 
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { toggleLike, isLiked } = useFavoritesStore();
 
   useEffect(() => {
+    if (initialPlaylist && initialPlaylist._id !== playlist?._id) {
+      setPlaylist(initialPlaylist);
+    }
+  }, [initialPlaylist]);
+
+  useEffect(() => {
     async function fetchPlaylist() {
-      if (!playlistId) return;
-      setLoading(true);
+      if (!activeId) return;
+      if (!playlist?.musics?.length) {
+        setLoading(true);
+      }
       try {
-        const res = await api.get(`/playlists/${playlistId}`);
-        setPlaylist(res.data?.playlist);
+        const res = await api.get(`/playlists/${activeId}`);
+        if (res.data?.playlist) {
+          setPlaylist(res.data.playlist);
+        }
       } catch (err) {
         console.error("Failed to load playlist:", err);
       } finally {
@@ -25,7 +37,7 @@ export default function PlaylistView({ playlistId, playlistName }) {
       }
     }
     fetchPlaylist();
-  }, [playlistId]);
+  }, [activeId]);
 
   const tracks = playlist?.musics || [];
 
@@ -54,6 +66,16 @@ export default function PlaylistView({ playlistId, playlistName }) {
 
   return (
     <div className="space-y-6 select-none animate-fadeIn">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          <span>Back</span>
+        </button>
+      )}
+
       {/* Header Banner */}
       <div className="h-52 rounded-3xl bg-gradient-to-r from-blue-600/40 via-[#181a24] to-[#14151f] border border-white/5 p-8 flex items-end justify-between shadow-2xl">
         <div className="flex items-center gap-6">
