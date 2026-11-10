@@ -370,7 +370,7 @@ export default function App() {
                 </div>
               )}
 
-              <HeroBanner onPlayMusic={() => { }} />
+              <HeroBanner featuredTrack={tracks[0]} allTracks={tracks} />
 
               {/* Dynamic Top Artists with Pagination */}
               <TopArtists

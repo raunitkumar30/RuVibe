@@ -60,7 +60,8 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
         const res = await api.get(
           `/music/albums?q=${encodeURIComponent(searchQuery.trim())}&page=1&limit=18`
         );
-        setAlbums(res.data?.albums || []);
+        const list = res.data?.albums || [];
+        setAlbums(list);
         setHasMore(res.data?.hasMore ?? false);
         setPage(1);
       } catch (err) {
@@ -73,18 +74,18 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 3. Infinite Load More Albums
+  // 3. Infinite dynamic pagination: Load next batch of albums
   const handleLoadMoreAlbums = async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     const nextPage = page + 1;
 
     try {
-      const endpoint = searchQuery.trim()
+      const url = searchQuery.trim()
         ? `/music/albums?q=${encodeURIComponent(searchQuery.trim())}&page=${nextPage}&limit=18`
         : `/music/albums?page=${nextPage}&limit=18`;
 
-      const res = await api.get(endpoint);
+      const res = await api.get(url);
       const newAlbums = res.data?.albums || [];
 
       if (newAlbums.length > 0) {
@@ -94,7 +95,7 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
           return [...prev, ...uniqueNew];
         });
         setPage(nextPage);
-        setHasMore(res.data?.hasMore ?? true);
+        setHasMore(res.data?.hasMore ?? newAlbums.length >= 18);
       } else {
         setHasMore(false);
       }
@@ -105,88 +106,66 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
     }
   };
 
-  // 4. Select & Load Full Album Tracklist
+  // 4. Open full album detail with tracklist
   const handleSelectAlbum = async (album) => {
-    if (album.musics && album.musics.length > 0 && album.musics[0].uri) {
-      setSelectedAlbum(album);
-      return;
-    }
-
+    setSelectedAlbum(album);
     setAlbumLoading(true);
+
     try {
-      const res = await api.get(`/music/albums/${album._id || album.albumid}`);
+      const albumIdentifier = album.albumid || album._id;
+      const res = await api.get(`/music/albums/${albumIdentifier}`);
       if (res.data?.album) {
         setSelectedAlbum(res.data.album);
-      } else {
-        setSelectedAlbum(album);
       }
-    } catch {
-      setSelectedAlbum(album);
+    } catch (err) {
+      console.error("Failed to load album tracks:", err);
     } finally {
       setAlbumLoading(false);
     }
   };
 
+  const getArtistName = (artist) => {
+    if (!artist) return "Artist";
+    if (typeof artist === "object") return artist.username || artist.name || "Artist";
+    return artist;
+  };
+
   const formatDuration = (seconds) => {
-    if (!seconds || isNaN(seconds)) return "3:30";
+    if (!seconds) return "3:30";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  const getArtistName = (art) => {
-    if (!art) return "Various Artists";
-    if (typeof art === "object") return art.username || art.name || "Artist";
-    return art;
-  };
-
-  // Play a single song from the album
-  const handlePlaySong = (song, albumTracks) => {
-    if (currentTrack?._id === song._id) {
-      togglePlay();
-    } else {
-      playTrack(song, albumTracks);
-    }
-  };
-
-  // Play All songs in the album
-  const handlePlayAlbum = () => {
-    const tracks = selectedAlbum?.musics || [];
-    if (tracks.length > 0) {
-      playTrack(tracks[0], tracks);
-    }
-  };
-
   // ──────────────────────────────────────────────
-  // VIEW B: SINGLE ALBUM DETAIL VIEW
+  // VIEW B: SINGLE ALBUM TRACKLIST VIEW
   // ──────────────────────────────────────────────
   if (selectedAlbum) {
     const tracks = selectedAlbum.musics || [];
     const albumArtist = getArtistName(selectedAlbum.artist);
-    const albumCover =
-      selectedAlbum.coverArt ||
-      tracks[0]?.coverArt ||
-      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&auto=format&fit=crop&q=80";
+
+    const handlePlayAlbum = () => {
+      if (tracks.length > 0) {
+        playTrack(tracks[0], tracks);
+      }
+    };
 
     return (
-      <div className="space-y-6 animate-fadeIn select-none">
+      <div className="space-y-7 animate-fadeIn select-none">
         {/* Back Button */}
         <button
           onClick={() => setSelectedAlbum(null)}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors cursor-pointer group"
+          className="flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full w-fit"
         >
-          <ArrowLeft
-            size={18}
-            className="group-hover:-translate-x-1 transition-transform"
-          />
-          <span>Back to all albums</span>
+          <ArrowLeft size={16} />
+          <span>Back to All Albums</span>
         </button>
 
         {/* Album Header Banner */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 bg-gradient-to-b from-blue-900/30 via-[#181a26] to-[#12131d] p-7 rounded-3xl border border-white/5 shadow-2xl">
-          <div className="w-44 h-44 rounded-2xl overflow-hidden shadow-2xl shadow-black/60 bg-[#1e202e] shrink-0 border border-white/10">
+        <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 bg-gradient-to-b from-blue-900/30 to-[#181a26] p-7 rounded-3xl border border-white/5">
+          <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-2xl shrink-0 bg-[#242738] border border-white/10">
             <img
-              src={albumCover}
+              src={selectedAlbum.coverArt}
               alt={selectedAlbum.title}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -236,65 +215,96 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
           </div>
 
           {albumLoading ? (
-            <div className="py-20 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
-              <Loader2 size={24} className="animate-spin text-blue-500" />
-              <span className="text-xs">Loading album tracks...</span>
+            // Shimmering Tracklist Skeleton
+            <div className="space-y-2 mt-3">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-12 items-center p-3 rounded-xl bg-white/5 animate-pulse"
+                >
+                  <span className="col-span-1 w-4 h-3 bg-white/10 rounded mx-auto" />
+                  <div className="col-span-8 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/10 rounded-lg shrink-0" />
+                    <div className="space-y-1.5 flex-1 max-w-xs">
+                      <div className="h-3.5 bg-white/10 rounded w-3/4" />
+                      <div className="h-2.5 bg-white/5 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="col-span-2 text-right hidden sm:block">
+                    <span className="inline-block w-8 h-3 bg-white/10 rounded" />
+                  </div>
+                  <div className="col-span-3 sm:col-span-1 text-right">
+                    <span className="inline-block w-4 h-4 bg-white/10 rounded-full" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : tracks.length === 0 ? (
             <div className="py-16 text-center text-gray-500 text-xs">
               No tracks available for this album right now.
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
-              {tracks.map((song, index) => {
+            <div className="divide-y divide-white/5 mt-1">
+              {tracks.map((song, idx) => {
                 const isCurrent = currentTrack?._id === song._id;
                 const isThisPlaying = isCurrent && isPlaying;
-                const liked = isLiked(song._id);
+                const liked = isLiked ? isLiked(song._id) : false;
 
                 return (
                   <div
-                    key={song._id || index}
-                    onClick={() => handlePlaySong(song, tracks)}
-                    className={`grid grid-cols-12 items-center px-4 py-3 rounded-2xl hover:bg-white/[0.04] transition-all cursor-pointer group ${
-                      isCurrent ? "bg-blue-600/10" : ""
+                    key={song._id || idx}
+                    onClick={() => {
+                      if (isCurrent) togglePlay();
+                      else playTrack(song, tracks);
+                    }}
+                    className={`grid grid-cols-12 items-center p-3 px-4 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group ${
+                      isCurrent ? "bg-blue-600/10 text-blue-400" : "text-white"
                     }`}
                   >
-                    {/* Index / Play Indicator */}
-                    <div className="col-span-1 text-center">
+                    {/* Index or Equalizer */}
+                    <div className="col-span-1 text-center text-xs font-mono text-gray-500">
                       {isThisPlaying ? (
-                        <div className="flex items-end justify-center gap-0.5 h-3">
-                          <span className="w-0.5 bg-blue-500 h-3 animate-pulse"></span>
-                          <span className="w-0.5 bg-blue-500 h-2 animate-pulse delay-75"></span>
-                          <span className="w-0.5 bg-blue-500 h-3 animate-pulse delay-150"></span>
+                        <div className="flex items-end justify-center gap-[2px] h-3.5">
+                          <span className="w-1 bg-blue-500 rounded-full animate-eq-1"></span>
+                          <span className="w-1 bg-blue-500 rounded-full animate-eq-2"></span>
+                          <span className="w-1 bg-blue-500 rounded-full animate-eq-3"></span>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400 font-mono group-hover:hidden">
-                          {index + 1}
-                        </span>
+                        <span>{idx + 1}</span>
                       )}
-                      <Play
-                        size={14}
-                        fill="currentColor"
-                        className={`text-white mx-auto hidden ${
-                          isThisPlaying ? "" : "group-hover:block"
-                        }`}
-                      />
                     </div>
 
-                    {/* Title & Artist */}
+                    {/* Title + Cover */}
                     <div className="col-span-8 flex items-center gap-3 min-w-0 pr-4">
-                      <div className="min-w-0">
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#242738] border border-white/10">
+                        <img
+                          src={song.coverArt || selectedAlbum.coverArt}
+                          alt={song.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div
+                          className={`absolute inset-0 bg-black/40 flex items-center justify-center ${
+                            isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          }`}
+                        >
+                          {isThisPlaying ? (
+                            <Pause size={14} fill="currentColor" />
+                          ) : (
+                            <Play size={14} fill="currentColor" className="ml-0.5" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
                         <p
-                          className={`text-sm font-semibold truncate ${
-                            isCurrent
-                              ? "text-blue-400"
-                              : "text-white group-hover:text-blue-300"
+                          className={`text-xs font-bold truncate group-hover:text-blue-400 transition-colors ${
+                            isCurrent ? "text-blue-400" : "text-white"
                           }`}
                         >
                           {song.title}
                         </p>
-                        <p className="text-xs text-gray-400 truncate">
-                          {song.artist || albumArtist}
+                        <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                          {getArtistName(song.artist) || albumArtist}
                         </p>
                       </div>
                     </div>
@@ -359,14 +369,27 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
-          <Loader2 size={24} className="animate-spin text-blue-500" />
-          <span className="text-xs">Loading studio albums...</span>
+      {loading && albums.length === 0 ? (
+        // Shimmering 12-Card Album Grid Skeleton
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="bg-[#181a24]/60 p-3.5 rounded-2xl flex flex-col border border-white/5 animate-pulse"
+            >
+              <div className="aspect-square w-full rounded-xl bg-white/10 mb-3" />
+              <div className="w-3/4 h-3 bg-white/10 rounded mb-1.5" />
+              <div className="w-1/2 h-2.5 bg-white/5 rounded mb-2" />
+              <div className="flex justify-between">
+                <div className="w-8 h-2 bg-white/5 rounded" />
+                <div className="w-10 h-2 bg-white/5 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : albums.length === 0 ? (
         <div className="py-24 text-center text-gray-500 text-xs">
-          No albums found matching "{searchQuery}".
+          No albums found matching &ldquo;{searchQuery}&rdquo;.
         </div>
       ) : (
         <>
@@ -410,18 +433,18 @@ export default function AlbumsView({ onOpenAddToPlaylist }) {
             ))}
           </div>
 
-          {/* Infinite Dynamic Load More Albums Button */}
+          {/* Load More Button */}
           {hasMore && (
-            <div className="mt-8 flex justify-center">
+            <div className="pt-6 flex justify-center">
               <button
                 onClick={handleLoadMoreAlbums}
                 disabled={loadingMore}
-                className="flex items-center gap-2 px-7 py-3 rounded-2xl bg-white/5 hover:bg-blue-600/20 text-xs font-bold text-gray-300 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-white/5 hover:bg-blue-600/20 text-xs font-bold text-gray-300 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 {loadingMore ? (
                   <>
                     <Loader2 size={14} className="animate-spin text-blue-400" />
-                    <span>Loading more albums...</span>
+                    <span>Loading more studio albums...</span>
                   </>
                 ) : (
                   <>

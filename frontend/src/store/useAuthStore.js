@@ -73,10 +73,20 @@ export const useAuthStore = create((set) => ({
   // 4. Logout
   logout: async () => {
     try {
-      await api.post("/music/logout");
+      await api.post("/auth/logout");
     } catch {
-      // ignore
+      try {
+        await api.post("/music/logout");
+      } catch {
+        // ignore
+      }
     }
     set({ user: null, isAuthenticated: false });
   },
 }));
+
+if (typeof window !== "undefined") {
+  window.addEventListener("ruvibe:unauthorized", () => {
+    useAuthStore.setState({ user: null, isAuthenticated: false });
+  });
+}

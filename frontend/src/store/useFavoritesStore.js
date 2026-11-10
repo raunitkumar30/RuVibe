@@ -12,8 +12,8 @@ export const useFavoritesStore = create((set, get) => ({
     set({ isLoading: true });
     try {
       const response = await api.get("/music/liked");
-      const musics = response.data?.musics || [];
-      const ids = new Set(musics.map((m) => m._id));
+      const musics = response.data?.likedSongs || response.data?.musics || [];
+      const ids = new Set(musics.map((m) => (m?._id ? String(m._id) : String(m))));
       set({ likedSongs: musics, likedSongIds: ids, isLoading: false });
     } catch {
       set({ isLoading: false });

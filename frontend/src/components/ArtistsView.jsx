@@ -58,16 +58,7 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
         const list = res.data?.artists || [];
         setArtistsList(list);
         setHasMore(res.data?.hasMore ?? true);
-
-        if (initialArtist) {
-          const artistName = typeof initialArtist === "object" ? initialArtist.name : initialArtist;
-          const match = list.find(
-            (a) => a.name.toLowerCase() === artistName.toLowerCase()
-          );
-          if (match) {
-            setSelectedArtist(match);
-          }
-        }
+        setPage(1);
       } catch (err) {
         console.error("Failed to load artists:", err);
       } finally {
@@ -75,10 +66,12 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
       }
     }
 
-    loadInitialArtists();
-  }, [initialArtist]);
+    if (!searchQuery.trim()) {
+      loadInitialArtists();
+    }
+  }, [searchQuery]);
 
-  // 2. Debounced Live Search
+  // 2. Debounced live search across all artists globally
   useEffect(() => {
     if (!searchQuery.trim()) return;
 
@@ -88,7 +81,8 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
         const res = await api.get(
           `/music/top-artists?q=${encodeURIComponent(searchQuery.trim())}&page=1&limit=18`
         );
-        setArtistsList(res.data?.artists || []);
+        const list = res.data?.artists || [];
+        setArtistsList(list);
         setHasMore(res.data?.hasMore ?? false);
         setPage(1);
       } catch (err) {
@@ -101,18 +95,18 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 3. Infinite Load More Artists
-  const handleLoadMoreArtists = async () => {
+  // 3. Dynamic Infinite Pagination: Load more artists
+  const handleLoadMore = async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     const nextPage = page + 1;
 
     try {
-      const endpoint = searchQuery.trim()
+      const url = searchQuery.trim()
         ? `/music/top-artists?q=${encodeURIComponent(searchQuery.trim())}&page=${nextPage}&limit=18`
         : `/music/top-artists?page=${nextPage}&limit=18`;
 
-      const res = await api.get(endpoint);
+      const res = await api.get(url);
       const newArtists = res.data?.artists || [];
 
       if (newArtists.length > 0) {
@@ -122,7 +116,7 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
           return [...prev, ...uniqueNew];
         });
         setPage(nextPage);
-        setHasMore(res.data?.hasMore ?? true);
+        setHasMore(res.data?.hasMore ?? newArtists.length >= 18);
       } else {
         setHasMore(false);
       }
@@ -133,33 +127,31 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
     }
   };
 
-  // 4. Fetch full hit songs for selected artist
+  // 4. Fetch selected artist's complete songs
   useEffect(() => {
     if (!selectedArtist) return;
 
-    async function loadArtistSongs() {
+    async function fetchArtistTracks() {
       setLoadingTracks(true);
       try {
-        const res = await api.get(
-          `/music/search?q=${encodeURIComponent(selectedArtist.name)}`
-        );
-        setArtistTracks(res.data?.musics || []);
+        const queryName = selectedArtist.name;
+        const res = await api.get(`/music/search?q=${encodeURIComponent(queryName)}`);
+        const results = res.data?.musics || [];
+        setArtistTracks(results);
       } catch (err) {
         console.error("Failed to load artist tracks:", err);
-        setArtistTracks([]);
       } finally {
         setLoadingTracks(false);
       }
     }
 
-    loadArtistSongs();
+    fetchArtistTracks();
   }, [selectedArtist]);
 
-  const formatDuration = (seconds) => {
-    if (!seconds || isNaN(seconds)) return "3:30";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  const handlePlayAll = () => {
+    if (artistTracks.length > 0) {
+      playTrack(artistTracks[0], artistTracks);
+    }
   };
 
   const handlePlaySong = (song) => {
@@ -170,46 +162,31 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
     }
   };
 
-  const handlePlayAll = () => {
-    if (artistTracks.length > 0) {
-      playTrack(artistTracks[0], artistTracks);
-    }
-  };
-
-  const handleBackClick = () => {
-    setSelectedArtist(null);
-    if (onBack) onBack();
-  };
-
   // ──────────────────────────────────────────────
-  // VIEW B: SINGLE VERIFIED ARTIST PAGE
+  // VIEW B: SINGLE ARTIST PROFILE VIEW
   // ──────────────────────────────────────────────
   if (selectedArtist) {
-    const avatar =
-      selectedArtist.avatar ||
-      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80";
-
     return (
-      <div className="space-y-6 select-none animate-fadeIn">
+      <div className="space-y-7 animate-fadeIn select-none">
         {/* Back Button */}
         <button
-          onClick={handleBackClick}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors cursor-pointer group"
+          onClick={() => {
+            if (onBack) onBack();
+            else setSelectedArtist(null);
+          }}
+          className="flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full w-fit"
         >
-          <ArrowLeft
-            size={18}
-            className="group-hover:-translate-x-1 transition-transform"
-          />
-          <span>Back</span>
+          <ArrowLeft size={16} />
+          <span>Back to All Artists</span>
         </button>
 
-        {/* Hero Banner with Real Photo & Verified Badge */}
-        <div className="relative rounded-3xl overflow-hidden p-8 sm:p-10 bg-gradient-to-r from-blue-950 via-[#181a28] to-[#12131d] border border-white/5 shadow-2xl">
+        {/* Artist Profile Banner */}
+        <div className="relative rounded-3xl overflow-hidden bg-gradient-to-b from-blue-900/40 via-[#181a26] to-[#12131d] p-8 border border-white/5">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 relative z-10">
-            {/* Real Circular Photo */}
-            <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full overflow-hidden shadow-2xl shadow-black/80 shrink-0 border-2 border-white/10 bg-[#222538]">
+            {/* Large Artist Portrait */}
+            <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full overflow-hidden shadow-2xl shrink-0 bg-[#242738] border-4 border-white/10">
               <img
-                src={avatar}
+                src={selectedArtist.avatar}
                 alt={selectedArtist.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -219,12 +196,15 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
               />
             </div>
 
+            {/* Profile Info */}
             <div className="flex-1 text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-1.5 text-blue-400 text-xs font-bold tracking-wider uppercase mb-2">
-                <CheckCircle2 size={16} fill="currentColor" className="text-black" />
-                <span>Verified Artist</span>
+              <div className="flex items-center justify-center sm:justify-start gap-1.5 text-blue-400 mb-1">
+                <CheckCircle2 size={16} />
+                <span className="text-xs font-bold tracking-wider uppercase">
+                  Verified Artist
+                </span>
               </div>
-              <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-3">
+              <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight mb-2">
                 {selectedArtist.name}
               </h1>
               <p className="text-gray-300 text-sm font-medium mb-6">
@@ -258,21 +238,39 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
           </div>
         </div>
 
-        {/* Songs List Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h2 className="text-lg font-bold text-white tracking-tight">
-              All Songs by {selectedArtist.name}
+        {/* Popular Songs Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-white tracking-wide">
+              Popular Tracks by {selectedArtist.name}
             </h2>
             <span className="text-xs text-gray-400 font-mono">
-              {artistTracks.length} tracks
+              {artistTracks.length} tracks available
             </span>
           </div>
 
           {loadingTracks ? (
-            <div className="py-20 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
-              <Loader2 size={24} className="animate-spin text-blue-500" />
-              <span className="text-xs">Loading tracks...</span>
+            // Shimmering Track Rows Skeleton
+            <div className="space-y-2">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-2.5 px-4 rounded-2xl bg-[#181a24]/50 border border-white/5 animate-pulse"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-5 h-4 bg-white/10 rounded" />
+                    <div className="w-11 h-11 bg-white/10 rounded-xl shrink-0" />
+                    <div className="space-y-1.5 flex-1 max-w-xs">
+                      <div className="h-3.5 bg-white/10 rounded w-4/5" />
+                      <div className="h-2.5 bg-white/5 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-3 bg-white/10 rounded hidden sm:block" />
+                    <div className="w-10 h-3 bg-white/10 rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : artistTracks.length === 0 ? (
             <div className="py-16 text-center text-gray-500 text-xs">
@@ -302,15 +300,13 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
 
                       <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#242738] shrink-0 border border-white/10">
                         <img
-                          src={song.coverArt || avatar}
+                          src={song.coverArt}
                           alt={song.title}
                           className="w-full h-full object-cover"
                         />
                         <div
-                          className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
-                            isCurrent
-                              ? "opacity-100 text-blue-400"
-                              : "opacity-0 group-hover:opacity-100 text-white"
+                          className={`absolute inset-0 bg-black/40 flex items-center justify-center ${
+                            isThisPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                           }`}
                         >
                           {isThisPlaying ? (
@@ -323,25 +319,27 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
 
                       <div className="min-w-0 flex-1">
                         <p
-                          className={`text-sm font-semibold truncate ${
-                            isCurrent
-                              ? "text-blue-400"
-                              : "text-white group-hover:text-blue-300"
+                          className={`text-xs font-bold truncate group-hover:text-blue-400 transition-colors ${
+                            isCurrent ? "text-blue-400" : "text-white"
                           }`}
                         >
                           {song.title}
                         </p>
-                        <p className="text-xs text-gray-400 truncate mt-0.5">
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">
                           {song.album || "Single"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className="text-xs font-mono text-gray-400">
-                        {formatDuration(song.duration)}
-                      </span>
+                    <div className="hidden sm:block text-xs font-mono text-gray-400 pr-6">
+                      {song.duration
+                        ? `${Math.floor(song.duration / 60)}:${String(
+                            Math.floor(song.duration % 60)
+                          ).padStart(2, "0")}`
+                        : "3:30"}
+                    </div>
 
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -350,7 +348,6 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
                         className={`p-1.5 rounded-full transition-transform active:scale-75 cursor-pointer ${
                           liked ? "text-red-500 fill-red-500" : "text-gray-500 hover:text-white"
                         }`}
-                        title={liked ? "Remove from Liked" : "Save to Liked"}
                       >
                         <Heart size={16} fill={liked ? "currentColor" : "none"} />
                       </button>
@@ -366,11 +363,11 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
   }
 
   // ──────────────────────────────────────────────
-  // VIEW A: ALL ARTISTS GRID
+  // VIEW A: ALL ARTISTS GRID VIEW
   // ──────────────────────────────────────────────
   return (
-    <div className="space-y-6 select-none animate-fadeIn">
-      {/* Header */}
+    <div className="space-y-6 animate-fadeIn select-none">
+      {/* Header with Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
@@ -395,10 +392,20 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
         </div>
       </div>
 
-      {loadingArtists ? (
-        <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
-          <Loader2 size={24} className="animate-spin text-blue-500" />
-          <span className="text-xs">Loading artists...</span>
+      {loadingArtists && artistsList.length === 0 ? (
+        // Shimmering 12-Card Artist Grid Skeleton
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="bg-[#181a24]/60 p-4 rounded-3xl flex flex-col items-center text-center border border-white/5 animate-pulse"
+            >
+              <div className="w-28 h-28 rounded-full bg-white/10 mb-3" />
+              <div className="w-20 h-3.5 bg-white/10 rounded mb-1.5" />
+              <div className="w-14 h-2.5 bg-white/5 rounded mb-2" />
+              <div className="w-16 h-2 bg-white/5 rounded" />
+            </div>
+          ))}
         </div>
       ) : (
         <>
@@ -440,13 +447,13 @@ export default function ArtistsView({ initialArtist, onBack, onOpenAddToPlaylist
             ))}
           </div>
 
-          {/* Infinite Dynamic Load More Artists Button */}
+          {/* Load More Artists Button */}
           {hasMore && (
-            <div className="mt-8 flex justify-center">
+            <div className="pt-6 flex justify-center">
               <button
-                onClick={handleLoadMoreArtists}
+                onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="flex items-center gap-2 px-7 py-3 rounded-2xl bg-white/5 hover:bg-blue-600/20 text-xs font-bold text-gray-300 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-white/5 hover:bg-blue-600/20 text-xs font-bold text-gray-300 hover:text-blue-400 border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 {loadingMore ? (
                   <>

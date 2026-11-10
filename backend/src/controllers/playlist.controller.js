@@ -41,14 +41,14 @@ async function getPlaylistById(req, res) {
     const { id } = req.params;
 
     const playlist = await playlistModel
-        .findById(id)
+        .findOne({ _id: id, user: req.user.id })
         .populate({
             path: "musics",
             populate: { path: "artist", select: "username email" },
         });
 
     if (!playlist) {
-        return res.status(404).json({ message: "Playlist not found" });
+        return res.status(404).json({ message: "Playlist not found or unauthorized" });
     }
 
     return res.status(200).json({

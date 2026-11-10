@@ -22,6 +22,21 @@ async function registerUser(req, res) {
     const cleanUsername = String(username).trim();
     const cleanEmail = String(email).trim().toLowerCase();
 
+    // Input Validation: Email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    // Input Validation: Raw password length check BEFORE hashing
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long" });
+    }
+
+    if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+      return res.status(400).json({ message: "Username must be between 3 and 30 characters" });
+    }
+
     // Prevent privilege escalation — only allow "user" or "artist"
     const safeRole = role === "artist" ? "artist" : "user";
 
@@ -40,6 +55,7 @@ async function registerUser(req, res) {
       email: cleanEmail,
       password: hashedPassword,
       role: safeRole,
+      likedSongs: [],
     });
 
     await newUser.save();
@@ -147,8 +163,20 @@ async function getMe(req, res) {
   }
 }
 
+// 4. Logout User (Clears cookie with exact matching options)
+async function logoutUser(req, res) {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  });
+  return res.status(200).json({ message: "Logged out successfully" });
+}
+
 module.exports = {
   registerUser,
   loginUser,
   getMe,
+  logoutUser,
+  getCookieOptions,
 };

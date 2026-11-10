@@ -13,6 +13,10 @@ import {
   Radio,
   Users,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -27,6 +31,12 @@ export default function Navbar({
   onSelectCategory,
   onFilterMusic,
   onSelectArtist,
+  canGoBack = false,
+  canGoForward = false,
+  onNavigateBack,
+  onNavigateForward,
+  isPlayerCollapsed = false,
+  onTogglePlayerCollapse,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilterTab, setActiveFilterTab] = useState("all");
@@ -137,6 +147,12 @@ export default function Navbar({
       ) {
         setShowDropdown(false);
       }
+      if (
+        settingsModalRef.current &&
+        !settingsModalRef.current.contains(e.target)
+      ) {
+        setShowSettings(false);
+      }
     }
 
     function handleKeyDown(e) {
@@ -154,15 +170,16 @@ export default function Navbar({
     };
   }, []);
 
-  const handleSelectTrack = (track, list = null) => {
-    playTrack(track, list || songResults);
+  const handleSelectTrack = (track, queueList) => {
+    playTrack(track, queueList);
     setShowDropdown(false);
+    showToast(`Playing "${track.title}"`);
   };
 
   const handleSelectArtist = (artist) => {
-    if (onSelectArtist) {
-      onSelectArtist(artist);
-    }
+    const artistName = typeof artist === "object" ? artist.name : artist;
+    if (onSelectArtist) onSelectArtist(artistName);
+    if (onFilterMusic) onFilterMusic(artistName);
     setShowDropdown(false);
   };
 
@@ -196,6 +213,35 @@ export default function Navbar({
 
   return (
     <header className="h-20 px-8 flex items-center justify-between bg-transparent select-none shrink-0 relative z-40 border-b border-white/5">
+      {/* 0. History Navigation Controls (Spotify-style Back & Forward) */}
+      <div className="flex items-center gap-1.5 mr-4">
+        <button
+          onClick={onNavigateBack}
+          disabled={!canGoBack}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            canGoBack
+              ? "bg-[#1e202e] text-white hover:bg-white/10 hover:scale-105 cursor-pointer shadow-md"
+              : "bg-white/5 text-gray-600 cursor-not-allowed"
+          }`}
+          title="Go back (Alt + Left Arrow)"
+        >
+          <ChevronLeft size={18} />
+        </button>
+
+        <button
+          onClick={onNavigateForward}
+          disabled={!canGoForward}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+            canGoForward
+              ? "bg-[#1e202e] text-white hover:bg-white/10 hover:scale-105 cursor-pointer shadow-md"
+              : "bg-white/5 text-gray-600 cursor-not-allowed"
+          }`}
+          title="Go forward (Alt + Right Arrow)"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
       {/* 1. Category Switcher */}
       <div className="flex items-center gap-7">
         {mainTabs.map((tab) => {
@@ -302,15 +348,15 @@ export default function Navbar({
                           <img
                             src={artist.avatar || "https://via.placeholder.com/100"}
                             alt={artist.name}
-                            className="w-10 h-10 rounded-full object-cover shadow-sm group-hover:scale-105 transition-transform"
+                            className="w-10 h-10 rounded-full object-cover shrink-0"
                           />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-white truncate group-hover:text-blue-400 transition-colors">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
                               {artist.name}
                             </p>
-                            <p className="text-[10px] text-gray-400 truncate">
-                              {artist.genre || "Top Artist"}
-                            </p>
+                            <span className="text-[10px] text-gray-400">
+                              {artist.genre || "Artist"}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -460,7 +506,7 @@ export default function Navbar({
               {!hasResults && !isSearching && (
                 <div className="p-8 text-center text-gray-500 text-xs">
                   <Search size={24} className="mx-auto mb-2 opacity-30" />
-                  <p>No results found for "{searchTerm}"</p>
+                  <p>No results found for &ldquo;{searchTerm}&rdquo;</p>
                   <p className="text-[10px] text-gray-600 mt-1">
                     Try searching by song, artist name, or podcast episode.
                   </p>
@@ -471,8 +517,19 @@ export default function Navbar({
         )}
       </div>
 
-      {/* 3. Action Controls: Settings & Profile Pill */}
+      {/* 3. Action Controls: Panel Toggle, Upload, Settings & Profile Pill */}
       <div className="flex items-center gap-3.5">
+        {/* Panel Toggle (Spotify-style Now Playing expand/collapse) */}
+        {onTogglePlayerCollapse && (
+          <button
+            onClick={onTogglePlayerCollapse}
+            title={isPlayerCollapsed ? "Show Now Playing View" : "Hide Now Playing View"}
+            className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-white/5"
+          >
+            {isPlayerCollapsed ? <PanelRightOpen size={18} /> : <PanelRightClose size={18} />}
+          </button>
+        )}
+
         {/* Artist Upload Track Button */}
         {isAuthenticated && user?.role === "artist" && (
           <button
@@ -527,7 +584,7 @@ export default function Navbar({
         )}
       </div>
 
-      {/* 4. SETTINGS MODAL DIALOG */}
+      {/* 4. SETTINGS MODAL DIALOG (Preserved with all original features) */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
           <div
@@ -598,15 +655,16 @@ export default function Navbar({
               {/* Option 2: Autoplay toggle */}
               <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5">
                 <div>
-                  <p className="text-xs font-bold text-white">Autoplay Next Song</p>
-                  <p className="text-[10px] text-gray-400">
-                    Keep the music going when track ends
-                  </p>
+                  <p className="text-xs font-bold text-white">Autoplay Similar Music</p>
+                  <p className="text-[10px] text-gray-400">Keep listening when your queue ends</p>
                 </div>
                 <button
-                  onClick={() => setAutoplayNext((prev) => !prev)}
+                  onClick={() => {
+                    setAutoplayNext((prev) => !prev);
+                    showToast(autoplayNext ? "Autoplay disabled" : "Autoplay enabled");
+                  }}
                   className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                    autoplayNext ? "bg-blue-600" : "bg-white/20"
+                    autoplayNext ? "bg-blue-600" : "bg-gray-700"
                   }`}
                 >
                   <span
@@ -618,16 +676,16 @@ export default function Navbar({
               </div>
 
               {/* Option 3: Keyboard Shortcuts Cheatsheet */}
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5">
-                <p className="text-xs font-bold text-white mb-2">Desktop Shortcuts</p>
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-300">
+              <div>
+                <p className="text-xs font-bold text-white mb-2">Desktop Hotkeys</p>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
                     <span className="text-gray-400">Play / Pause</span>
                     <span className="text-blue-400 font-bold">Space</span>
                   </div>
                   <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
-                    <span className="text-gray-400">Next Song</span>
-                    <span className="text-blue-400 font-bold">→</span>
+                    <span className="text-gray-400">Next / Prev</span>
+                    <span className="text-blue-400 font-bold">→ / ←</span>
                   </div>
                   <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
                     <span className="text-gray-400">Mute Toggle</span>

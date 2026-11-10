@@ -60,10 +60,19 @@ async function createMusic(req, res) {
 async function createAlbum(req, res) {
   const { title, musics } = req.body;
 
+  if (!title || String(title).trim() === "") {
+    return res.status(400).json({ message: "Album title is required" });
+  }
+
+  const cleanTitle = String(title).trim().slice(0, 150);
+  const cleanMusics = Array.isArray(musics)
+    ? musics.map((id) => String(id)).slice(0, 50)
+    : [];
+
   const album = await albumModel.create({
-    title: title,
+    title: cleanTitle,
     artist: req.user.id,
-    musics: musics,
+    musics: cleanMusics,
   });
 
   res.status(201).json({
@@ -236,30 +245,41 @@ async function getAlbumById(req, res) {
 
 // 7. Logout User
 async function logoutUser(req, res) {
-  res.clearCookie("token");
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  });
   res.status(200).json({ message: "Logged out successfully" });
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // 8. Search Music
 async function searchMusic(req, res) {
   const { q } = req.query;
 
-  if (!q || q.trim() === "") {
+  if (!q || String(q).trim() === "") {
     return res.status(400).json({ message: "Search query 'q' parameter is required" });
   }
+
+  const cleanQuery = String(q).trim().slice(0, 100);
+  const safeRegex = new RegExp(escapeRegex(cleanQuery), "i");
 
   try {
     const localMusics = await musicModel
       .find({
         $or: [
-          { title: { $regex: q, $options: "i" } },
-          { genre: { $regex: q, $options: "i" } },
+          { title: { $regex: safeRegex } },
+          { genre: { $regex: safeRegex } },
         ],
       })
       .populate("artist", "username email role")
       .limit(10);
 
-    const globalMusics = await searchGlobalTracks(q, 20);
+    const globalMusics = await searchGlobalTracks(cleanQuery, 20);
     const allMusics = [...localMusics, ...globalMusics];
 
     return res.status(200).json({
@@ -310,10 +330,14 @@ async function getLyrics(req, res) {
   }
 }
 
-// 12. Toggle Like Music
+// 12. Toggle Like Music (With robust param detection & Mongoose markModified)
 async function toggleLikeMusic(req, res) {
-  const { id } = req.params;
+  const musicId = req.params.musicId || req.params.id;
   const userId = req.user.id;
+
+  if (!musicId) {
+    return res.status(400).json({ message: "Music ID is required" });
+  }
 
   try {
     const user = await userModel.findById(userId);
@@ -321,26 +345,40 @@ async function toggleLikeMusic(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const isAlreadyLiked = user.likedSongs?.some(
-      (song) => song._id?.toString() === id || song.toString() === id
+    if (!Array.isArray(user.likedSongs)) {
+      user.likedSongs = [];
+    }
+
+    const isAlreadyLiked = user.likedSongs.some(
+      (song) => (song?._id ? String(song._id) : String(song)) === String(musicId)
     );
 
     if (isAlreadyLiked) {
       user.likedSongs = user.likedSongs.filter(
-        (song) => (song._id ? song._id.toString() : song.toString()) !== id
+        (song) => (song?._id ? String(song._id) : String(song)) !== String(musicId)
       );
+      user.markModified("likedSongs"); // Crucial for Mongoose Mixed array persistence
       await user.save();
       return res.status(200).json({
         message: "Removed from liked songs",
         isLiked: false,
       });
     } else {
-      const songDetails = req.body.song;
-      if (songDetails) {
-        user.likedSongs.push(songDetails);
-      } else {
-        user.likedSongs.push(id);
-      }
+      const raw = req.body.song || req.body;
+      const songDetails = raw && (raw.title || raw.uri) ? {
+        _id: String(raw._id || musicId),
+        title: String(raw.title || "Unknown Title").slice(0, 200),
+        uri: String(raw.uri || "").slice(0, 500),
+        coverArt: String(raw.coverArt || "").slice(0, 500),
+        duration: Number(raw.duration) || 0,
+        genre: String(raw.genre || "Pop").slice(0, 50),
+        artist: typeof raw.artist === "object"
+          ? String(raw.artist?.username || raw.artist?.name || "Artist").slice(0, 100)
+          : String(raw.artist || "Artist").slice(0, 100),
+      } : { _id: String(musicId) };
+
+      user.likedSongs.unshift(songDetails); // Add to beginning so newest like is at the top
+      user.markModified("likedSongs"); // Crucial for Mongoose Mixed array persistence
       await user.save();
       return res.status(200).json({
         message: "Added to liked songs",
@@ -363,8 +401,10 @@ async function getLikedMusics(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const songs = Array.isArray(user.likedSongs) ? user.likedSongs : [];
     return res.status(200).json({
-      likedSongs: user.likedSongs || [],
+      likedSongs: songs,
+      musics: songs,
     });
   } catch (error) {
     console.error("Error in getLikedMusics:", error);

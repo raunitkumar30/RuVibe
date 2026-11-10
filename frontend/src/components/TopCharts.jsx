@@ -94,140 +94,164 @@ export default function TopCharts({
 
       {/* Track List Table */}
       <div className="space-y-1.5 relative">
-        {chartTracks.map((track, index) => {
-          const isThisTrackCurrent = currentTrack?._id === track._id;
-          const isThisTrackPlaying = isThisTrackCurrent && isPlaying;
-          const isMenuOpen = activeMenuTrackId === track._id;
+        {chartTracks.length === 0 ? (
+          // Shimmering Skeleton Rows during initial load
+          <div className="space-y-2">
+            {[...Array(7)].map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-2.5 px-4 rounded-2xl bg-[#181a24]/50 border border-white/5 animate-pulse"
+              >
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="w-5 h-4 bg-white/10 rounded" />
+                  <div className="w-11 h-11 bg-white/10 rounded-xl shrink-0" />
+                  <div className="space-y-1.5 flex-1 max-w-xs">
+                    <div className="h-3.5 bg-white/10 rounded w-4/5" />
+                    <div className="h-2.5 bg-white/5 rounded w-1/2" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="w-20 h-3 bg-white/10 rounded hidden sm:block" />
+                  <div className="w-10 h-3 bg-white/10 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          chartTracks.map((track, index) => {
+            const isThisTrackCurrent = currentTrack?._id === track._id;
+            const isThisTrackPlaying = isThisTrackCurrent && isPlaying;
+            const isMenuOpen = activeMenuTrackId === track._id;
 
-          const artistName =
-            typeof track.artist === "object"
-              ? track.artist?.username || "Artist"
-              : track.artist || "Artist";
+            const artistName =
+              typeof track.artist === "object"
+                ? track.artist?.username || "Artist"
+                : track.artist || "Artist";
 
-          const trackIsLiked = isLiked ? isLiked(track._id) : false;
+            const trackIsLiked = isLiked ? isLiked(track._id) : false;
 
-          return (
-            <div
-              key={track._id || index}
-              onClick={() => handleRowClick(track)}
-              className={`group flex items-center justify-between p-2.5 px-4 rounded-2xl cursor-pointer transition-all duration-200 relative ${
-                isThisTrackCurrent
-                  ? "bg-blue-600/15 border border-blue-500/30 shadow-md shadow-blue-500/10"
-                  : "bg-[#181a24]/60 hover:bg-[#1f2130] border border-white/5"
-              }`}
-            >
-              {/* Left Column: Rank / Play & Artwork & Title */}
-              <div className="flex items-center gap-4 min-w-0 flex-1 pr-4">
-                <div className="w-6 text-center shrink-0">
-                  {isThisTrackPlaying ? (
-                    <div className="flex items-end justify-center gap-[2px] h-3.5">
-                      <span className="w-1 bg-blue-500 rounded-full animate-eq-1"></span>
-                      <span className="w-1 bg-blue-500 rounded-full animate-eq-2"></span>
-                      <span className="w-1 bg-blue-500 rounded-full animate-eq-3"></span>
-                    </div>
-                  ) : (
-                    <span
-                      className={`text-xs font-mono font-bold ${
-                        isThisTrackCurrent ? "text-blue-400" : "text-gray-500"
+            return (
+              <div
+                key={track._id || index}
+                onClick={() => handleRowClick(track)}
+                className={`group flex items-center justify-between p-2.5 px-4 rounded-2xl cursor-pointer transition-all duration-200 relative ${
+                  isThisTrackCurrent
+                    ? "bg-blue-600/15 border border-blue-500/30 shadow-md shadow-blue-500/10"
+                    : "bg-[#181a24]/60 hover:bg-[#1f2130] border border-white/5"
+                }`}
+              >
+                {/* Left Column: Rank / Play & Artwork & Title */}
+                <div className="flex items-center gap-4 min-w-0 flex-1 pr-4">
+                  <div className="w-6 text-center shrink-0">
+                    {isThisTrackPlaying ? (
+                      <div className="flex items-end justify-center gap-[2px] h-3.5">
+                        <span className="w-1 bg-blue-500 rounded-full animate-eq-1"></span>
+                        <span className="w-1 bg-blue-500 rounded-full animate-eq-2"></span>
+                        <span className="w-1 bg-blue-500 rounded-full animate-eq-3"></span>
+                      </div>
+                    ) : (
+                      <span
+                        className={`text-xs font-mono font-bold ${
+                          isThisTrackCurrent ? "text-blue-400" : "text-gray-500"
+                        }`}
+                      >
+                        {track.rank || String(index + 1).padStart(2, "0")}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#242738] shrink-0 border border-white/10 shadow-sm">
+                    <img
+                      src={track.coverArt || "https://via.placeholder.com/150"}
+                      alt={track.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.target.src =
+                          "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80";
+                      }}
+                    />
+                    <div
+                      className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center text-white ${
+                        isThisTrackPlaying
+                          ? "opacity-100 bg-blue-600/60"
+                          : "opacity-0 group-hover:opacity-100"
                       }`}
                     >
-                      {track.rank || String(index + 1).padStart(2, "0")}
-                    </span>
-                  )}
-                </div>
+                      {isThisTrackPlaying ? (
+                        <Pause size={16} fill="currentColor" />
+                      ) : (
+                        <Play size={16} fill="currentColor" className="ml-0.5" />
+                      )}
+                    </div>
+                  </div>
 
-                <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#242738] shrink-0 border border-white/10 shadow-sm">
-                  <img
-                    src={track.coverArt || "https://via.placeholder.com/100"}
-                    alt={track.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div
-                    className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
-                      isThisTrackCurrent
-                        ? "opacity-100 text-blue-400"
-                        : "opacity-0 group-hover:opacity-100 text-white"
-                    }`}
-                  >
-                    {isThisTrackPlaying ? (
-                      <Pause size={16} fill="currentColor" />
-                    ) : (
-                      <Play size={16} fill="currentColor" className="ml-0.5" />
-                    )}
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-xs font-bold truncate transition-colors ${
+                        isThisTrackCurrent
+                          ? "text-blue-400"
+                          : "text-white group-hover:text-blue-400"
+                      }`}
+                    >
+                      {track.title}
+                    </p>
+                    <p className="text-[11px] text-gray-400 truncate mt-0.5">
+                      {artistName}
+                    </p>
                   </div>
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={`text-sm font-semibold truncate transition-colors ${
-                      isThisTrackCurrent
-                        ? "text-blue-400"
-                        : "text-white group-hover:text-blue-300"
-                    }`}
-                  >
-                    {track.title}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">
-                    {artistName}
-                  </p>
+                {/* Center Column: Plays Count */}
+                <div className="hidden md:block w-36 text-right pr-6">
+                  <span className="text-xs text-gray-400 font-mono font-medium">
+                    {track.plays || "Trending"}
+                  </span>
                 </div>
-              </div>
 
-              {/* Middle: Album Name */}
-              <div className="hidden md:block w-44 truncate text-xs text-gray-400 pr-4">
-                {track.album || "Single Track"}
-              </div>
+                {/* Center Column: Duration */}
+                <div className="hidden sm:block w-16 text-right pr-4">
+                  <span className="text-xs text-gray-400 font-mono">
+                    {track.duration
+                      ? `${Math.floor(track.duration / 60)}:${String(
+                          Math.floor(track.duration % 60)
+                        ).padStart(2, "0")}`
+                      : "3:30"}
+                  </span>
+                </div>
 
-              {/* Middle: Plays Count */}
-              <div className="hidden lg:block w-28 text-right text-xs font-medium text-gray-400 font-mono pr-6">
-                {track.plays || "45M Plays"}
-              </div>
+                {/* Right Column: Like Button & Floating 3-Dots Menu */}
+                <div className="flex items-center gap-2 relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLike(track);
+                    }}
+                    className={`p-1.5 rounded-full transition-transform active:scale-75 cursor-pointer ${
+                      trackIsLiked
+                        ? "text-red-500 fill-red-500"
+                        : "text-gray-500 hover:text-white"
+                    }`}
+                    title={trackIsLiked ? "Remove from Liked" : "Save to Liked"}
+                  >
+                    <Heart size={16} fill={trackIsLiked ? "currentColor" : "none"} />
+                  </button>
 
-              {/* Right Column: Duration, Heart & 3-Dots Menu */}
-              <div className="flex items-center gap-4 shrink-0">
-                <span className="text-xs font-mono text-gray-400 w-10 text-right">
-                  {track.duration
-                    ? `${Math.floor(track.duration / 60)}:${String(
-                        Math.floor(track.duration % 60)
-                      ).padStart(2, "0")}`
-                    : "3:30"}
-                </span>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleLike(track);
-                  }}
-                  className={`p-1.5 rounded-full transition-transform active:scale-75 cursor-pointer ${
-                    trackIsLiked
-                      ? "text-red-500 fill-red-500"
-                      : "text-gray-500 hover:text-white"
-                  }`}
-                  title={trackIsLiked ? "Remove from Liked" : "Save to Liked"}
-                >
-                  <Heart
-                    size={16}
-                    fill={trackIsLiked ? "currentColor" : "none"}
-                  />
-                </button>
-
-                <div className="relative">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveMenuTrackId(isMenuOpen ? null : track._id);
                     }}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-                    title="More actions"
+                    className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                    title="More options"
                   >
                     <MoreHorizontal size={16} />
                   </button>
 
+                  {/* Floating Action Menu */}
                   {isMenuOpen && (
                     <div
                       ref={menuRef}
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-8 w-44 bg-[#1c1e2b] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-40 animate-fadeIn"
+                      className="absolute right-0 top-10 w-44 bg-[#1b1d2a] border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-fadeIn space-y-1"
                     >
                       <button
                         onClick={(e) => handlePlayNext(e, track)}
@@ -262,13 +286,13 @@ export default function TopCharts({
                   )}
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Dynamic Load More Songs Button */}
-      {onLoadMoreSongs && !activeFilter && hasMoreSongs && (
+      {onLoadMoreSongs && !activeFilter && hasMoreSongs && chartTracks.length > 0 && (
         <div className="mt-6 flex justify-center">
           <button
             onClick={onLoadMoreSongs}
