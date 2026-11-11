@@ -75,7 +75,6 @@ export const useAuthStore = create((set) => ({
     try {
       await api.post("/auth/logout");
     } catch {
-      // ignore network errors on cleanup
     }
     set({ user: null, isAuthenticated: false });
   },
