@@ -40,17 +40,12 @@ export default function FullScreenPlayer({ isOpen, onClose, onSeek }) {
   const [lyrics, setLyrics] = useState("");
   const [loadingLyrics, setLoadingLyrics] = useState(false);
 
-  const track = currentTrack || {
-    title: "No Song Playing",
-    artist: "Select a track to play",
-    coverArt: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80",
-    duration: 210,
-  };
+  const track = currentTrack;
 
   const artistName =
-    typeof track.artist === "object"
-      ? track.artist?.username || "Artist"
-      : track.artist || "Artist";
+    typeof track?.artist === "object"
+      ? track?.artist?.username || "Artist"
+      : track?.artist || "Artist";
 
   // Press ESC to exit full screen
   useEffect(() => {
@@ -99,7 +94,7 @@ export default function FullScreenPlayer({ isOpen, onClose, onSeek }) {
     };
   }, [isOpen, track?.title, artistName]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !track) return null;
 
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return "0:00";

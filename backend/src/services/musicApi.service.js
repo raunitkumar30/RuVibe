@@ -169,12 +169,13 @@ async function fetchLiveTopCharts(limit = 15, page = 1) {
     const now = Date.now();
     try {
       if (!cachedLiveCharts || now - lastChartCacheTime > 30 * 60 * 1000) {
+        const chartListId = process.env.JIOSAAVN_CHARTS_PLAYLIST_ID || "1134548194";
         const detailsRes = await axios.get(JIOSAAVN_API_URL, {
           params: {
             __call: "playlist.getDetails",
             _format: "json",
             _marker: "0",
-            listid: "1134548194",
+            listid: chartListId,
           },
           timeout: 8000,
         });
@@ -249,7 +250,7 @@ async function fetchTopArtists(page = 1, limit = 12, query = "") {
         name: cleanHtml(item.name),
         genre: cleanHtml(item.role || "Verified Artist"),
         plays: "Verified Artist",
-        monthlyListeners: "8,500,000+",
+        monthlyListeners: item.follower_count ? item.follower_count.toLocaleString() : null,
         avatar: item.image
           ? item.image.replace("150x150", "500x500").replace("50x50", "500x500")
           : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",
@@ -338,7 +339,7 @@ async function fetchTopArtists(page = 1, limit = 12, query = "") {
       name: cleanHtml(item.name),
       genre: cleanHtml(item.role || "Global Artist"),
       plays: "Verified Artist",
-      monthlyListeners: "9,000,000+",
+      monthlyListeners: item.follower_count ? item.follower_count.toLocaleString() : null,
       avatar: item.image
         ? item.image.replace("150x150", "500x500").replace("50x50", "500x500")
         : "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80",

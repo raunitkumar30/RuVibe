@@ -59,7 +59,6 @@ router.post(
 router.post(
   "/create-album",
   authMiddleware.authArtist,
-  upload.single("file"),
   asyncHandler(musicController.createAlbum)
 );
 router.post("/:musicId/like", authMiddleware.authUser, asyncHandler(musicController.toggleLikeMusic));

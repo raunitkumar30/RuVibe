@@ -178,5 +178,4 @@ module.exports = {
   loginUser,
   getMe,
   logoutUser,
-  getCookieOptions,
 };

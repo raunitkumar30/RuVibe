@@ -9,13 +9,13 @@ export default function HeroBanner({ featuredTrack, allTracks = [] }) {
 
   const track = featuredTrack || {
     _id: "demo_featured",
-    title: "In My Feelings",
-    artist: "Camila Cabello",
-    plays: "63 Million Plays",
+    title: "Welcome to RuVibe",
+    artist: "RuVibe",
+    plays: "Discover Your Sound",
     coverArt:
       "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1200&auto=format&fit=crop&q=80",
-    uri: "https://cdns-preview-d.dzcdn.net/stream/c-514d7a83d71959723ec09f6e3ab2b2a0-3.mp3",
-    duration: 215,
+    uri: null,
+    duration: 0,
   };
 
   const artistName =
@@ -24,6 +24,7 @@ export default function HeroBanner({ featuredTrack, allTracks = [] }) {
       : track.artist || "Artist";
 
   const handlePlay = () => {
+    if (!track.uri) return;
     playTrack(track, allTracks.length > 0 ? allTracks : [track]);
   };
 
@@ -59,7 +60,10 @@ export default function HeroBanner({ featuredTrack, allTracks = [] }) {
         <div className="flex items-center gap-4">
           <button
             onClick={handlePlay}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider px-7 py-3 rounded-full transition-all shadow-lg shadow-blue-600/30 active:scale-95 cursor-pointer"
+            disabled={!track.uri}
+            className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider px-7 py-3 rounded-full transition-all shadow-lg shadow-blue-600/30 active:scale-95 cursor-pointer ${
+              !track.uri ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             <Play size={15} fill="currentColor" />
             <span>Listen Now</span>
