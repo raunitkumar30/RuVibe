@@ -7,7 +7,6 @@ import {
   Radio,
   Clock,
   Heart,
-  Folder,
   PlusSquare,
   Activity,
   Check,
@@ -53,9 +52,7 @@ export default function Sidebar({
 
   const libraryItems = [
     { id: "recent", label: "Recent", icon: Clock },
-    { id: "albums", label: "Albums", icon: Folder },
     { id: "favorites", label: "Favourites", icon: Heart },
-    { id: "local", label: "Local", icon: Disc },
   ];
 
   // 1. Fetch user's playlists

@@ -22,7 +22,6 @@ import AlbumsView from "./components/AlbumsView";
 import ArtistsView from "./components/ArtistsView";
 import RecentView from "./components/RecentView";
 import GenresView from "./components/GenresView";
-import LocalView from "./components/LocalView";
 import RadioView from "./components/RadioView";
 import PodcastView from "./components/PodcastView";
 import FullScreenPlayer from "./components/FullScreenPlayer";
@@ -445,13 +444,10 @@ export default function App() {
             />
           )}
 
-          {/* VIEW 9: Local Audio Files (Drag & Drop) */}
-          {currentView === "local" && <LocalView />}
-
-          {/* VIEW 10: Live Streaming Radio Stations */}
+          {/* VIEW 9: Live Streaming Radio Stations */}
           {currentView === "radio" && <RadioView />}
 
-          {/* VIEW 11: Real Podcast Episodes Streaming */}
+          {/* VIEW 10: Real Podcast Episodes Streaming */}
           {currentView === "podcast" && <PodcastView />}
         </main>
       </div>
