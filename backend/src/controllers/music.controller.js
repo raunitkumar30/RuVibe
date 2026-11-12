@@ -158,6 +158,11 @@ async function getAllAlbums(req, res) {
     const limit = Math.max(1, parseInt(req.query.limit) || 18);
     const query = req.query.q || "";
 
+    // 1. Fetch official studio albums first
+    const dynamicResult = await fetchTopAlbums(page, limit, query);
+    const dynamicAlbums = dynamicResult?.albums || [];
+
+    // 2. Fetch locally created albums on page 1 only
     let localAlbums = [];
     if (page === 1 && !query) {
       try {
@@ -183,9 +188,8 @@ async function getAllAlbums(req, res) {
       }
     }
 
-    const dynamicResult = await fetchTopAlbums(page, limit, query);
-    const dynamicAlbums = dynamicResult?.albums || [];
-    const combined = [...localAlbums, ...dynamicAlbums];
+    // 3. Official studio albums stay at the top; local albums follow
+    const combined = dynamicAlbums.length > 0 ? [...dynamicAlbums, ...localAlbums] : localAlbums;
 
     res.status(200).json({
       message: "All albums fetched successfully",
