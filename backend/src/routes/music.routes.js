@@ -49,6 +49,7 @@ router.get("/albums/:albumId", asyncHandler(musicController.getAlbumById));
 
 // Protected Endpoints (Specific routes defined before parameterized wildcards)
 router.get("/liked", authMiddleware.authUser, asyncHandler(musicController.getLikedMusics));
+router.get("/my-uploads", authMiddleware.authUser, asyncHandler(musicController.getMyUploads));
 router.post(
   "/upload",
   authMiddleware.authArtist,

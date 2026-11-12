@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
-  Settings,
   LogOut,
   User as UserIcon,
   Play,
@@ -12,11 +11,12 @@ import {
   Mic,
   Radio,
   Users,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
   PanelRightClose,
   PanelRightOpen,
+  ChevronDown,
+  Sparkles,
+  Headphones,
+  Trash2,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -31,10 +31,7 @@ export default function Navbar({
   onSelectCategory,
   onFilterMusic,
   onSelectArtist,
-  canGoBack = false,
-  canGoForward = false,
-  onNavigateBack,
-  onNavigateForward,
+  onShowMyUploads,
   isPlayerCollapsed = false,
   onTogglePlayerCollapse,
 }) {
@@ -42,11 +39,7 @@ export default function Navbar({
   const [activeFilterTab, setActiveFilterTab] = useState("all");
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-
-  // Settings Modal State
-  const [showSettings, setShowSettings] = useState(false);
-  const [audioQuality, setAudioQuality] = useState("320");
-  const [autoplayNext, setAutoplayNext] = useState(true);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   // Result Buckets
   const [songResults, setSongResults] = useState([]);
@@ -55,7 +48,7 @@ export default function Navbar({
   const [radioResults, setRadioResults] = useState([]);
 
   const searchContainerRef = useRef(null);
-  const settingsModalRef = useRef(null);
+  const profileDropdownRef = useRef(null);
 
   const { user, isAuthenticated, logout } = useAuthStore();
   const { playTrack, clearRecent } = usePlayerStore();
@@ -148,17 +141,17 @@ export default function Navbar({
         setShowDropdown(false);
       }
       if (
-        settingsModalRef.current &&
-        !settingsModalRef.current.contains(e.target)
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(e.target)
       ) {
-        setShowSettings(false);
+        setShowProfileDropdown(false);
       }
     }
 
     function handleKeyDown(e) {
       if (e.key === "Escape") {
         setShowDropdown(false);
-        setShowSettings(false);
+        setShowProfileDropdown(false);
       }
     }
 
@@ -202,7 +195,7 @@ export default function Navbar({
   const handleClearHistory = () => {
     clearRecent();
     showToast("Listening history cleared successfully", "info");
-    setShowSettings(false);
+    setShowProfileDropdown(false);
   };
 
   const hasResults =
@@ -213,35 +206,6 @@ export default function Navbar({
 
   return (
     <header className="h-20 px-8 flex items-center justify-between bg-transparent select-none shrink-0 relative z-40 border-b border-white/5">
-      {/* 0. History Navigation Controls (Spotify-style Back & Forward) */}
-      <div className="flex items-center gap-1.5 mr-4">
-        <button
-          onClick={onNavigateBack}
-          disabled={!canGoBack}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-            canGoBack
-              ? "bg-[#1e202e] text-white hover:bg-white/10 hover:scale-105 cursor-pointer shadow-md"
-              : "bg-white/5 text-gray-600 cursor-not-allowed"
-          }`}
-          title="Go back (Alt + Left Arrow)"
-        >
-          <ChevronLeft size={18} />
-        </button>
-
-        <button
-          onClick={onNavigateForward}
-          disabled={!canGoForward}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-            canGoForward
-              ? "bg-[#1e202e] text-white hover:bg-white/10 hover:scale-105 cursor-pointer shadow-md"
-              : "bg-white/5 text-gray-600 cursor-not-allowed"
-          }`}
-          title="Go forward (Alt + Right Arrow)"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
       {/* 1. Category Switcher */}
       <div className="flex items-center gap-7">
         {mainTabs.map((tab) => {
@@ -517,9 +481,9 @@ export default function Navbar({
         )}
       </div>
 
-      {/* 3. Action Controls: Panel Toggle, Upload, Settings & Profile Pill */}
+      {/* 3. Action Controls: Panel Toggle & Interactive Profile Dropdown */}
       <div className="flex items-center gap-3.5">
-        {/* Panel Toggle (Spotify-style Now Playing expand/collapse) */}
+        {/* Panel Toggle */}
         {onTogglePlayerCollapse && (
           <button
             onClick={onTogglePlayerCollapse}
@@ -530,48 +494,152 @@ export default function Navbar({
           </button>
         )}
 
-        {/* Artist Upload Track Button */}
-        {isAuthenticated && user?.role === "artist" && (
-          <button
-            onClick={onOpenUpload}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md shadow-blue-500/20 transition-all active:scale-95 cursor-pointer"
-            title="Upload your track to RuVibe"
-          >
-            <Upload size={14} />
-            <span className="hidden sm:inline">Upload Track</span>
-          </button>
-        )}
-
-        {/* Settings Button */}
-        <button
-          onClick={() => setShowSettings(true)}
-          className="text-gray-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-white/5"
-          title="Settings"
-        >
-          <Settings size={18} />
-        </button>
-
-        {/* Profile Pill */}
+        {/* Profile Pill with Animated Dropdown */}
         {isAuthenticated ? (
-          <div className="flex items-center gap-2.5 bg-[#181a24] p-1.5 pr-3 rounded-full border border-white/5">
-            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
-              {user?.username ? user.username[0].toUpperCase() : "U"}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-white leading-tight">
-                {user?.username}
-              </span>
-              <span className="text-[9px] text-blue-400 font-medium uppercase tracking-wider">
-                {user?.role || "user"}
-              </span>
-            </div>
+          <div className="relative" ref={profileDropdownRef}>
             <button
-              onClick={logout}
-              title="Logout"
-              className="text-gray-400 hover:text-red-400 transition-colors ml-2 cursor-pointer"
+              onClick={() => setShowProfileDropdown((prev) => !prev)}
+              className="flex items-center gap-2.5 bg-[#181a24] hover:bg-[#1e202e] p-1.5 pr-3 rounded-full border border-white/5 hover:border-white/10 transition-all cursor-pointer group shadow-md"
             >
-              <LogOut size={14} />
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-blue-500/20">
+                {user?.username ? user.username[0].toUpperCase() : "U"}
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-semibold text-white leading-tight group-hover:text-blue-400 transition-colors">
+                  {user?.username}
+                </span>
+                <span className="text-[9px] text-blue-400 font-medium uppercase tracking-wider">
+                  {user?.role === "artist" ? "Artist" : "Listener"}
+                </span>
+              </div>
+              <ChevronDown
+                size={14}
+                className={`text-gray-400 transition-transform duration-200 ml-0.5 ${
+                  showProfileDropdown ? "rotate-180 text-blue-400" : ""
+                }`}
+              />
             </button>
+
+            {/* Dropdown Menu */}
+            {showProfileDropdown && (
+              <div className="absolute right-0 mt-2.5 w-64 bg-[#161722]/98 backdrop-blur-2xl border border-white/10 rounded-2xl p-2.5 shadow-2xl z-50 animate-fadeIn space-y-1">
+                {/* User Header Profile Card */}
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 mb-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      {user?.username ? user.username[0].toUpperCase() : "U"}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-xs font-bold text-white truncate">{user?.username}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md w-fit">
+                    {user?.role === "artist" ? (
+                      <>
+                        <Sparkles size={11} />
+                        <span>Verified Artist Studio</span>
+                      </>
+                    ) : (
+                      <>
+                        <Headphones size={11} />
+                        <span>Music Listener</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Role Specific Actions */}
+                {user?.role === "artist" ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        if (onShowMyUploads) {
+                          onShowMyUploads();
+                        } else if (onFilterMusic) {
+                          onFilterMusic(user.username);
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
+                    >
+                      <Music size={14} className="text-blue-400" />
+                      <span>My Uploaded Songs</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        if (onOpenUpload) onOpenUpload();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
+                    >
+                      <Upload size={14} className="text-emerald-400" />
+                      <span>Upload New Track</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        const moods = [
+                          "Chill Hits",
+                          "Pop Hits",
+                          "Acoustic Vibes",
+                          "Trending Today",
+                          "Top 50 Global",
+                          "Hip Hop",
+                        ];
+                        const randomMood = moods[Math.floor(Math.random() * moods.length)];
+                        if (onFilterMusic) onFilterMusic(randomMood);
+                        showToast(`✨ Curating ${randomMood} for you!`, "info");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
+                    >
+                      <Sparkles size={14} className="text-purple-400" />
+                      <span>Curate Music for Me</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        if (onFilterMusic) onFilterMusic("Top Charts");
+                        showToast("Loaded daily personalized mix", "info");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
+                    >
+                      <Headphones size={14} className="text-blue-400" />
+                      <span>Daily Flow Mix</span>
+                    </button>
+                  </>
+                )}
+
+                {/* Clear Listening History */}
+                <button
+                  onClick={handleClearHistory}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all text-left cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                  <span>Clear Listening Cache</span>
+                </button>
+
+                <div className="h-px bg-white/5 my-1" />
+
+                {/* Logout Button */}
+                <button
+                  onClick={() => {
+                    setShowProfileDropdown(false);
+                    logout();
+                    showToast("Signed out successfully");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all text-left cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <button
@@ -583,133 +651,6 @@ export default function Navbar({
           </button>
         )}
       </div>
-
-      {/* 4. SETTINGS MODAL DIALOG (Preserved with all original features) */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
-          <div
-            ref={settingsModalRef}
-            className="w-full max-w-md bg-[#161722] border border-white/10 rounded-3xl p-6 shadow-2xl relative"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-5">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-500/15 text-blue-400">
-                  <Settings size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">RuVibe Settings</h3>
-                  <p className="text-[11px] text-gray-400">Preferences & Audio</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="space-y-5">
-              {/* Option 1: Audio Bitrate */}
-              <div>
-                <p className="text-xs font-bold text-white mb-1.5">Audio Streaming Bitrate</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      setAudioQuality("160");
-                      showToast("Audio set to 160 kbps (Data Saver)");
-                    }}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
-                      audioQuality === "160"
-                        ? "border-blue-500 bg-blue-500/10 text-white"
-                        : "border-white/5 bg-white/5 text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    <p className="text-xs font-bold">160 kbps</p>
-                    <p className="text-[10px] text-gray-400">Standard / Mobile</p>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setAudioQuality("320");
-                      showToast("Audio set to 320 kbps Ultra HD Lossless");
-                    }}
-                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
-                      audioQuality === "320"
-                        ? "border-blue-500 bg-blue-500/10 text-white"
-                        : "border-white/5 bg-white/5 text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-bold">320 kbps</p>
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-blue-500 text-white">
-                        HD
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-gray-400">Studio Lossless</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Option 2: Autoplay toggle */}
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/5">
-                <div>
-                  <p className="text-xs font-bold text-white">Autoplay Similar Music</p>
-                  <p className="text-[10px] text-gray-400">Keep listening when your queue ends</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setAutoplayNext((prev) => !prev);
-                    showToast(autoplayNext ? "Autoplay disabled" : "Autoplay enabled");
-                  }}
-                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-                    autoplayNext ? "bg-blue-600" : "bg-gray-700"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                      autoplayNext ? "left-6" : "left-1"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Option 3: Keyboard Shortcuts Cheatsheet */}
-              <div>
-                <p className="text-xs font-bold text-white mb-2">Desktop Hotkeys</p>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
-                    <span className="text-gray-400">Play / Pause</span>
-                    <span className="text-blue-400 font-bold">Space</span>
-                  </div>
-                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
-                    <span className="text-gray-400">Next / Prev</span>
-                    <span className="text-blue-400 font-bold">→ / ←</span>
-                  </div>
-                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
-                    <span className="text-gray-400">Mute Toggle</span>
-                    <span className="text-blue-400 font-bold">M</span>
-                  </div>
-                  <div className="flex justify-between font-mono bg-black/20 p-1.5 rounded-lg">
-                    <span className="text-gray-400">Full Screen</span>
-                    <span className="text-blue-400 font-bold">F</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Option 4: Clear Listening Cache */}
-              <button
-                onClick={handleClearHistory}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 cursor-pointer transition-colors"
-              >
-                <Trash2 size={14} />
-                <span>Clear Listening History</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

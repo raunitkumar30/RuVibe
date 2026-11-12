@@ -222,7 +222,28 @@ export default function App() {
     }
   };
 
-  // 8. Audio synchronization with HTML5 Audio element
+  // 8. Show ONLY Songs Uploaded by the Logged-in Artist (from MongoDB)
+  const handleShowMyUploads = async () => {
+    setActiveFilter("My Uploaded Tracks");
+    setCurrentView("explore");
+    try {
+      const res = await api.get("/music/my-uploads");
+      const list = res.data?.musics || [];
+      setTracks(list);
+      setQueue(list);
+      setHasMoreSongs(false);
+      if (list.length === 0) {
+        showToast("You haven't uploaded any tracks to MongoDB yet.", "info");
+      } else {
+        showToast(`Loaded ${list.length} uploaded ${list.length === 1 ? "track" : "tracks"}`);
+      }
+    } catch (err) {
+      console.error("Fetch uploads error:", err);
+      showToast("Failed to load your uploaded tracks", "info");
+    }
+  };
+
+  // 9. Audio synchronization with HTML5 Audio element
   useEffect(() => {
     if (!audioRef.current) return;
 
@@ -328,9 +349,9 @@ export default function App() {
         onRequireAuth={() => setIsAuthOpen(true)}
       />
 
-      {/* COLUMN 2: Center Dashboard (Navbar pinned to top, scrollable view underneath) */}
+      {/* COLUMN 2: Center Dashboard */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Navbar ALWAYS at the very top */}
+        {/* Navbar */}
         <Navbar
           onOpenAuth={() => setIsAuthOpen(true)}
           onOpenUpload={() => setIsUploadOpen(true)}
@@ -346,6 +367,7 @@ export default function App() {
             const name = typeof artist === "object" ? artist.name : artist;
             handleFilterMusic(name);
           }}
+          onShowMyUploads={handleShowMyUploads}
         />
 
         {/* Scrollable View Area below Navbar */}

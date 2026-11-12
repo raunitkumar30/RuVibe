@@ -402,6 +402,31 @@ async function getLikedMusics(req, res) {
   }
 }
 
+// 13. 🌟 Get ONLY Tracks Uploaded by the Logged-in Artist (from MongoDB)
+async function getMyUploads(req, res) {
+  try {
+    const musics = await musicModel
+      .find({ artist: req.user.id })
+      .populate("artist", "username email role")
+      .sort({ createdAt: -1 });
+
+    const formatted = musics.map((track, i) => ({
+      ...(track.toObject ? track.toObject() : track),
+      rank: String(i + 1).padStart(2, "0"),
+      plays: track.plays || "Uploaded Track",
+    }));
+
+    return res.status(200).json({
+      message: "Artist uploaded tracks fetched successfully",
+      total: formatted.length,
+      musics: formatted,
+    });
+  } catch (error) {
+    console.error("Error in getMyUploads:", error);
+    return res.status(500).json({ message: "Error fetching uploaded tracks" });
+  }
+}
+
 module.exports = {
   createMusic,
   createAlbum,
@@ -415,4 +440,5 @@ module.exports = {
   toggleLikeMusic,
   getLikedMusics,
   getTopArtists,
+  getMyUploads,
 };
