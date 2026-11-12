@@ -87,6 +87,13 @@ async function getAllMusics(req, res) {
     const limit = Math.max(1, parseInt(req.query.limit) || 15);
     const skip = (page - 1) * limit;
 
+    let chartSongs = [];
+    try {
+      chartSongs = await fetchLiveTopCharts(limit, page);
+    } catch (err) {
+      console.warn("Live chart fetch error fallback:", err.message);
+    }
+
     let localMusics = [];
     if (page === 1) {
       localMusics = await musicModel
@@ -95,14 +102,8 @@ async function getAllMusics(req, res) {
         .populate("artist", "username email");
     }
 
-    let chartSongs = [];
-    try {
-      chartSongs = await fetchLiveTopCharts(limit, page);
-    } catch (err) {
-      console.warn("Live chart fetch error fallback:", err.message);
-    }
-
-    const combined = [...localMusics, ...chartSongs];
+    // Verified chart songs come first; uploaded tracks follow afterwards
+    const combined = chartSongs.length > 0 ? [...chartSongs, ...localMusics] : localMusics;
 
     const formatted = combined.map((track, i) => {
       const globalIndex = skip + i + 1;
@@ -282,7 +283,7 @@ async function searchMusic(req, res) {
   }
 }
 
-// 9. Search Podcasts
+// 8. Search Podcasts
 async function searchPodcasts(req, res) {
   const { q } = req.query;
   try {
@@ -293,7 +294,7 @@ async function searchPodcasts(req, res) {
   }
 }
 
-// 10. Get Live Radio Stations
+// 9. Get Live Radio Stations
 async function getRadioStations(req, res) {
   const { q } = req.query;
   try {
@@ -304,7 +305,7 @@ async function getRadioStations(req, res) {
   }
 }
 
-// 11. Get Song Lyrics
+// 10. Get Song Lyrics
 async function getLyrics(req, res) {
   const { artist, title } = req.query;
   if (!artist || !title) {
@@ -319,7 +320,7 @@ async function getLyrics(req, res) {
   }
 }
 
-// 12. Toggle Like Music (With robust param detection & Mongoose markModified)
+// 11. Toggle Like Music (With robust param detection & Mongoose markModified)
 async function toggleLikeMusic(req, res) {
   const musicId = req.params.musicId || req.params.id;
   const userId = req.user.id;
@@ -380,7 +381,7 @@ async function toggleLikeMusic(req, res) {
   }
 }
 
-// 13. Get Liked Musics
+// 12. Get Liked Musics
 async function getLikedMusics(req, res) {
   const userId = req.user.id;
 
