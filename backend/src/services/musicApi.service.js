@@ -493,12 +493,17 @@ async function fetchAlbumDetails(albumId) {
 }
 
 // 7. Search Podcasts
-async function searchPodcasts(query = "technology", limit = 15) {
+async function searchPodcasts(query = "trending podcast", limit = 20) {
   if (!ITUNES_API_URL) return [];
+  const searchTerm =
+    !query || query.trim() === "" || query.toLowerCase() === "trending"
+      ? "trending podcast"
+      : query.trim();
+
   try {
     const response = await axios.get(ITUNES_API_URL, {
       params: {
-        term: query,
+        term: searchTerm,
         entity: "podcastEpisode",
         limit,
       },

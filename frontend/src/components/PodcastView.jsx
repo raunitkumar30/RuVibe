@@ -8,14 +8,28 @@ import {
   Search,
   Loader2,
   Bookmark,
-  Radio,
+  Sparkles,
 } from "lucide-react";
 import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
 import { useToastStore } from "../store/useToastStore";
 
+const PODCAST_CATEGORIES = [
+  { id: "trending", label: "Featured & Trending", query: "trending podcast" },
+  { id: "tech", label: "Technology & AI", query: "technology" },
+  { id: "business", label: "Business & Startups", query: "business" },
+  { id: "news", label: "Daily News & Analysis", query: "daily news" },
+  { id: "science", label: "Science & Space", query: "science" },
+  { id: "growth", label: "Mindset & Growth", query: "motivation" },
+  { id: "comedy", label: "Comedy & Entertainment", query: "comedy" },
+  { id: "stories", label: "Stories & Culture", query: "storytelling" },
+  { id: "health", label: "Health & Wellness", query: "health fitness" },
+];
+
 export default function PodcastView() {
-  const [searchTerm, setSearchTerm] = useState("Lex Fridman");
+  const [activeCategoryId, setActiveCategoryId] = useState(PODCAST_CATEGORIES[0].id);
+  const [activeLabel, setActiveLabel] = useState(PODCAST_CATEGORIES[0].label);
+  const [searchQuery, setSearchQuery] = useState("");
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [savedEpisodes, setSavedEpisodes] = useState(new Set());
@@ -23,21 +37,11 @@ export default function PodcastView() {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { showToast } = useToastStore();
 
-  const curatedTopics = [
-    "Lex Fridman",
-    "Joe Rogan",
-    "Huberman Lab",
-    "Ranveer Allahbadia",
-    "How I Built This",
-    "NPR News",
-    "Deep Dive",
-  ];
-
   // Fetch real podcast episodes dynamically
-  const fetchEpisodes = async (query) => {
+  const fetchEpisodes = async (queryTerm) => {
     setLoading(true);
     try {
-      const res = await api.get(`/music/podcasts?q=${encodeURIComponent(query)}`);
+      const res = await api.get(`/music/podcasts?q=${encodeURIComponent(queryTerm)}`);
       setEpisodes(res.data?.episodes || []);
     } catch (err) {
       console.error("Failed to fetch podcasts:", err);
@@ -47,13 +51,27 @@ export default function PodcastView() {
     }
   };
 
+  // Initial load: featured & trending podcasts
   useEffect(() => {
-    fetchEpisodes(searchTerm);
+    fetchEpisodes(PODCAST_CATEGORIES[0].query);
   }, []);
 
+  // Category switch
+  const handleSelectCategory = (cat) => {
+    setActiveCategoryId(cat.id);
+    setActiveLabel(cat.label);
+    setSearchQuery("");
+    fetchEpisodes(cat.query);
+  };
+
+  // Manual search submit
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchTerm.trim()) fetchEpisodes(searchTerm);
+    const cleanQuery = searchQuery.trim();
+    if (!cleanQuery) return;
+    setActiveCategoryId(null);
+    setActiveLabel(`Search: "${cleanQuery}"`);
+    fetchEpisodes(cleanQuery);
   };
 
   const formatDuration = (seconds) => {
@@ -95,68 +113,67 @@ export default function PodcastView() {
             <Mic size={38} />
           </div>
           <div>
-            <span className="text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-              Real Audio Broadcasts
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+              <Sparkles size={11} /> Real Audio Broadcasts
             </span>
             <h1 className="text-3xl font-black text-white mt-2 mb-1 tracking-tight">
               Podcasts & Talk Shows
             </h1>
             <p className="text-xs text-gray-400">
-              Search and stream full-length episodes from top global creators.
+              Explore top shows across trending categories or search any topic.
             </p>
           </div>
         </div>
 
         {/* Dynamic Search Box */}
-        <form onSubmit={handleSearchSubmit} className="relative w-full md:w-72">
+        <form onSubmit={handleSearchSubmit} className="relative w-full md:w-80">
           <Search
             size={16}
             className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
           />
           <input
             type="text"
-            placeholder="Search any podcast..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#12131d] text-xs text-white placeholder-gray-500 pl-10 pr-4 py-3 rounded-2xl border border-white/10 focus:outline-none focus:border-blue-500/50"
+            placeholder="Search podcasts by topic or show..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-[#12131d] text-xs text-white placeholder-gray-500 pl-10 pr-4 py-3 rounded-2xl border border-white/10 focus:outline-none focus:border-blue-500/50 transition-all"
           />
         </form>
       </div>
 
-      {/* Quick Topic Pills */}
+      {/* Category Navigation Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {curatedTopics.map((topic) => (
+        {PODCAST_CATEGORIES.map((cat) => (
           <button
-            key={topic}
-            onClick={() => {
-              setSearchTerm(topic);
-              fetchEpisodes(topic);
-            }}
+            key={cat.id}
+            onClick={() => handleSelectCategory(cat)}
             className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              searchTerm.toLowerCase() === topic.toLowerCase()
-                ? "bg-blue-600 text-white font-bold"
+              activeCategoryId === cat.id
+                ? "bg-blue-600 text-white font-bold shadow-lg shadow-blue-600/20"
                 : "bg-[#181a26] text-gray-400 hover:text-white hover:bg-white/5 border border-white/5"
             }`}
           >
-            {topic}
+            {cat.label}
           </button>
         ))}
       </div>
 
-      {/* Episodes List */}
+      {/* Episodes List Section */}
       <div className="space-y-3">
-        <h3 className="text-base font-bold text-white px-1">
-          Episodes for "{searchTerm}" ({episodes.length})
-        </h3>
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-base font-bold text-white">
+            {activeLabel} <span className="text-gray-400 font-normal text-xs">({episodes.length} episodes)</span>
+          </h3>
+        </div>
 
         {loading ? (
           <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
             <Loader2 size={24} className="animate-spin text-blue-500" />
-            <span className="text-xs">Finding episodes...</span>
+            <span className="text-xs">Streaming podcast feed...</span>
           </div>
         ) : episodes.length === 0 ? (
           <div className="py-16 text-center text-gray-500 text-xs bg-[#181a26]/40 rounded-3xl border border-white/5">
-            No episodes found. Try searching another creator or topic above.
+            No episodes found for this topic. Try selecting another category above or search a different keyword.
           </div>
         ) : (
           <div className="space-y-3">
@@ -169,7 +186,7 @@ export default function PodcastView() {
                   key={ep._id}
                   className={`p-5 rounded-3xl border transition-all ${
                     isCurrent
-                      ? "bg-blue-600/10 border-blue-500/30"
+                      ? "bg-blue-600/10 border-blue-500/30 shadow-lg shadow-blue-500/5"
                       : "bg-[#181a26]/70 hover:bg-[#1f2130] border-white/5"
                   }`}
                 >

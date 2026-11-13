@@ -291,7 +291,7 @@ async function searchMusic(req, res) {
 async function searchPodcasts(req, res) {
   const { q } = req.query;
   try {
-    const episodes = await fetchPodcastsFromApi(q || "podcast", 15);
+    const episodes = await fetchPodcastsFromApi(q || "trending podcast", 20);
     return res.status(200).json({ episodes });
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch podcasts" });
