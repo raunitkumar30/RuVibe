@@ -12,7 +12,21 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// Centralized Response Interceptor
+// 1. Centralized Request Interceptor (Dual-Auth fallback for Safari / blocked cookies)
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("ruvibe_token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// 2. Centralized Response Interceptor (Handles unauthorized session drops)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -22,7 +36,6 @@ api.interceptors.response.use(
       !error.config?.url?.includes("/auth/login") &&
       !error.config?.url?.includes("/auth/me")
     ) {
-      // Dispatch a custom event or allow listeners to handle session expiry
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("ruvibe:unauthorized"));
       }

@@ -7,7 +7,7 @@ export const useAuthStore = create((set) => ({
   isLoading: true,         // Checks auth on first page load
   error: null,
 
-  // 1. Check if user already has an active session cookie on page load
+  // 1. Check if user already has an active session cookie / token on page load
   checkAuth: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -18,6 +18,9 @@ export const useAuthStore = create((set) => ({
         isLoading: false,
       });
     } catch {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("ruvibe_token");
+      }
       set({
         user: null,
         isAuthenticated: false,
@@ -36,6 +39,12 @@ export const useAuthStore = create((set) => ({
         : { username: usernameOrEmail, password };
 
       const res = await api.post("/auth/login", payload);
+
+      // Save token fallback for Safari / third-party cookie blocking
+      if (res.data?.token && typeof window !== "undefined") {
+        localStorage.setItem("ruvibe_token", res.data.token);
+      }
+
       set({
         user: res.data.user,
         isAuthenticated: true,
@@ -58,6 +67,12 @@ export const useAuthStore = create((set) => ({
         password,
         role: role || "user",
       });
+
+      // Save token fallback for Safari / third-party cookie blocking
+      if (res.data?.token && typeof window !== "undefined") {
+        localStorage.setItem("ruvibe_token", res.data.token);
+      }
+
       set({
         user: res.data.user,
         isAuthenticated: true,
@@ -75,13 +90,21 @@ export const useAuthStore = create((set) => ({
     try {
       await api.post("/auth/logout");
     } catch {
+      // Ignore network errors during logout
     }
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("ruvibe_token");
+    }
+
     set({ user: null, isAuthenticated: false });
   },
 }));
 
+// Clean up if server returns 401 unauthorized
 if (typeof window !== "undefined") {
   window.addEventListener("ruvibe:unauthorized", () => {
+    localStorage.removeItem("ruvibe_token");
     useAuthStore.setState({ user: null, isAuthenticated: false });
   });
 }
