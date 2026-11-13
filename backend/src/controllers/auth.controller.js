@@ -4,10 +4,11 @@ const bcrypt = require("bcryptjs");
 
 // Standard cookie configuration
 const getCookieOptions = () => ({
-  httpOnly: true, // Prevents JavaScript from reading the cookie (protects against XSS)
-  secure: process.env.NODE_ENV === "production", // HTTPS only in production
-  sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (matches JWT expiration)
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  // 'none' allows cross-domain cookies between frontend (Vercel) & backend (Render)
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 });
 
 // 1. Register User
@@ -168,7 +169,7 @@ async function logoutUser(req, res) {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   });
   return res.status(200).json({ message: "Logged out successfully" });
 }
