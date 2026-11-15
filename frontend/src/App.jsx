@@ -24,6 +24,7 @@ import RecentView from "./components/RecentView";
 import GenresView from "./components/GenresView";
 import RadioView from "./components/RadioView";
 import PodcastView from "./components/PodcastView";
+import MyUploadsView from "./components/MyUploadsView";
 import FullScreenPlayer from "./components/FullScreenPlayer";
 
 export default function App() {
@@ -222,25 +223,10 @@ export default function App() {
     }
   };
 
-  // 8. Show ONLY Songs Uploaded by the Logged-in Artist (from MongoDB)
-  const handleShowMyUploads = async () => {
-    setActiveFilter("My Uploaded Tracks");
-    setCurrentView("explore");
-    try {
-      const res = await api.get("/music/my-uploads");
-      const list = res.data?.musics || [];
-      setTracks(list);
-      setQueue(list);
-      setHasMoreSongs(false);
-      if (list.length === 0) {
-        showToast("You haven't uploaded any tracks to MongoDB yet.", "info");
-      } else {
-        showToast(`Loaded ${list.length} uploaded ${list.length === 1 ? "track" : "tracks"}`);
-      }
-    } catch (err) {
-      console.error("Fetch uploads error:", err);
-      showToast("Failed to load your uploaded tracks", "info");
-    }
+  // 8. Show ONLY Songs Uploaded by the Logged-in Artist (Dedicated View)
+  const handleShowMyUploads = () => {
+    setActiveFilter(null);
+    handleNavigateView("my-uploads");
   };
 
   // 9. Audio synchronization with HTML5 Audio element
@@ -471,6 +457,15 @@ export default function App() {
 
           {/* VIEW 10: Real Podcast Episodes Streaming */}
           {currentView === "podcast" && <PodcastView />}
+
+          {/* VIEW 11: Artist My Uploaded Songs */}
+          {currentView === "my-uploads" && (
+            <MyUploadsView
+              onBack={() => handleNavigateView("explore")}
+              onOpenUpload={() => setIsUploadOpen(true)}
+              onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+            />
+          )}
         </main>
       </div>
 
