@@ -58,7 +58,7 @@ const apiLimiter = rateLimit({
 });
 
 // 5. Routes with respective limiters
-app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/music", apiLimiter, musicRoutes);
 app.use("/api/playlists", apiLimiter, playlistRoutes);
 

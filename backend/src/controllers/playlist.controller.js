@@ -57,10 +57,10 @@ async function getPlaylistById(req, res) {
     });
 }
 
-// 4. Add a song to a playlist (supports both uploaded & search songs)
+/// 4. Add a song to a playlist (supports both uploaded & search songs)
 async function addMusicToPlaylist(req, res) {
     const { id } = req.params; // playlist ID
-    let { musicId, title, uri, coverArt, duration, genre } = req.body;
+    let { musicId, title, artist, uri, coverArt, duration, genre } = req.body;
 
     try {
         const playlist = await playlistModel.findOne({ _id: id, user: req.user.id });
@@ -68,14 +68,20 @@ async function addMusicToPlaylist(req, res) {
             return res.status(404).json({ message: "Playlist not found or unauthorized" });
         }
 
-        // If it's a global track or not yet an ObjectId in DB, save it to MongoDB first
-        if (!musicId || String(musicId).startsWith("global_") || String(musicId).length !== 24) {
+        // If it's a global track or not yet an ObjectId in DB, save it as an external reference
+        if (!musicId || String(musicId).startsWith("global_") || String(musicId).startsWith("chart_") || String(musicId).length !== 24) {
             let existingMusic = await musicModel.findOne({ uri });
             if (!existingMusic && title) {
+                const cleanArtist = typeof artist === "object"
+                    ? artist?.username || artist?.name || "Artist"
+                    : artist || "Artist";
+
                 existingMusic = new musicModel({
                     title: title || "Unknown Title",
                     uri: uri,
-                    artist: req.user.id,
+                    artist: null, // NOT uploaded by user
+                    artistName: cleanArtist,
+                    isUploaded: false,
                     coverArt: coverArt || "https://via.placeholder.com/600",
                     duration: duration || 0,
                     genre: genre || "Pop",

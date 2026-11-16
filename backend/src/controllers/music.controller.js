@@ -29,9 +29,10 @@ async function createMusic(req, res) {
     const uploadResult = await uploadFile(file);
     const metadata = await getTrackMetadata(title);
 
-    const music = await musicModel.create({
+      const music = await musicModel.create({
       title: title,
       artist: req.user.id,
+      isUploaded: true,
       album: album || metadata?.albumTitle,
       coverArt: metadata?.coverArt,
       duration: metadata?.duration,
@@ -97,7 +98,7 @@ async function getAllMusics(req, res) {
     let localMusics = [];
     if (page === 1) {
       localMusics = await musicModel
-        .find()
+        .find({ isUploaded: true })
         .limit(10)
         .populate("artist", "username email");
     }
@@ -410,7 +411,7 @@ async function getLikedMusics(req, res) {
 async function getMyUploads(req, res) {
   try {
     const musics = await musicModel
-      .find({ artist: req.user.id })
+      .find({ artist: req.user.id, isUploaded: true })
       .populate("artist", "username email role")
       .sort({ createdAt: -1 });
 

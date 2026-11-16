@@ -14,7 +14,16 @@ const musicSchema = new mongoose.Schema(
         artist: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-            required: [true, "Artist is required"],
+            required: false,
+        },
+        artistName: {
+            type: String,
+            trim: true,
+            default: "Artist",
+        },
+        isUploaded: {
+            type: Boolean,
+            default: false,
         },
         coverArt: {
             type: String,

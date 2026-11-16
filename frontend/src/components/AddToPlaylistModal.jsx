@@ -51,6 +51,7 @@ export default function AddToPlaylistModal({ isOpen, onClose, track }) {
       await api.post(`/playlists/${playlistId}/add`, {
         musicId: track._id,
         title: track.title,
+        artist: typeof track.artist === "object" ? track.artist?.username || track.artist?.name : track.artist,
         uri: track.uri,
         coverArt: track.coverArt,
         duration: track.duration,
@@ -142,11 +143,10 @@ export default function AddToPlaylistModal({ isOpen, onClose, track }) {
                   onClick={() =>
                     !isAdded && handleAddToPlaylist(playlist._id, playlist.name)
                   }
-                  className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all ${
-                    isAdded
+                  className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all ${isAdded
                       ? "bg-blue-600/15 border border-blue-500/30 text-blue-400"
                       : "bg-[#1c1e2b] hover:bg-[#222536] text-white"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <ListMusic size={16} className="text-gray-400 shrink-0" />
@@ -157,11 +157,10 @@ export default function AddToPlaylistModal({ isOpen, onClose, track }) {
 
                   <button
                     type="button"
-                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                      isAdded
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${isAdded
                         ? "bg-blue-500 text-white"
                         : "bg-white/10 text-gray-300 hover:bg-white/20"
-                    }`}
+                      }`}
                   >
                     {isAdded ? <Check size={14} /> : <Plus size={14} />}
                   </button>

@@ -39,11 +39,8 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
       formData.append("genre", genre.trim());
       formData.append("file", file);
 
-      const res = await api.post("/music/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      // Let Axios and the browser generate the multipart boundary automatically
+      const res = await api.post("/music/upload", formData);
 
       if (res.data?.music) {
         if (onUploadSuccess) onUploadSuccess(res.data.music);
@@ -55,10 +52,12 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
       }
     } catch (err) {
       console.error("Upload error:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to upload song. Make sure you are signed in as an artist."
-      );
+      const serverMessage = err.response?.data?.message;
+      if (err.response?.status === 403) {
+        setError("You need an artist account to upload songs. Please sign in as an artist.");
+      } else {
+        setError(serverMessage || "Failed to upload song. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
