@@ -57,6 +57,28 @@ export const useAuthStore = create((set) => ({
     }
   },
 
+  // 2B. Google Login
+  googleLogin: async (credential, role = "user") => {
+    set({ error: null });
+    try {
+      const res = await api.post("/auth/google", { credential, role });
+
+      if (res.data?.token && typeof window !== "undefined") {
+        localStorage.setItem("ruvibe_token", res.data.token);
+      }
+
+      set({
+        user: res.data.user,
+        isAuthenticated: true,
+      });
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || "Google login failed";
+      set({ error: message });
+      return { success: false, message };
+    }
+  },
+
   // 3. Register user (user or artist)
   register: async ({ username, email, password, role }) => {
     set({ error: null });

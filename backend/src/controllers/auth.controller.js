@@ -1,4 +1,6 @@
 const userModel = require("../models/user.model");
+const { OAuth2Client } = require("google-auth-library");
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
@@ -176,9 +178,90 @@ async function logoutUser(req, res) {
   return res.status(200).json({ message: "Logged out successfully" });
 }
 
+// 5. Google OAuth Login / Register
+async function googleLogin(req, res) {
+  try {
+    const { credential, role } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: "Google credential token is required" });
+    }
+
+    // Verify token cryptographically with Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: "Google account has no verified email" });
+    }
+
+    const cleanEmail = email.toLowerCase();
+    let user = await userModel.findOne({ $or: [{ googleId }, { email: cleanEmail }] });
+
+    if (user) {
+      // Link googleId if user previously registered via email/password
+      if (!user.googleId) {
+        user.googleId = googleId;
+        if (!user.avatar && picture) user.avatar = picture;
+        await user.save();
+      }
+    } else {
+      // Build a safe, unique username (3-30 chars)
+      const base = (name || cleanEmail.split("@")[0])
+        .replace(/[^a-zA-Z0-9_]/g, "")
+        .slice(0, 20) || "user";
+      let candidate = base.length >= 3 ? base : `${base}123`;
+
+      while (await userModel.findOne({ username: candidate })) {
+        candidate = `${base.slice(0, 20)}_${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      const safeRole = role === "artist" ? "artist" : "user";
+
+      user = await userModel.create({
+        username: candidate,
+        email: cleanEmail,
+        googleId,
+        avatar: picture || "",
+        role: safeRole,
+        likedSongs: [],
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, getCookieOptions());
+
+    return res.status(200).json({
+      message: "Google login successful",
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+    return res.status(401).json({ message: "Google authentication failed" });
+  }
+}
+
 module.exports = {
   registerUser,
   loginUser,
   getMe,
   logoutUser,
+  googleLogin,
 };

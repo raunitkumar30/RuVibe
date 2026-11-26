@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, Lock, Mail, User, Mic2, Headphones } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
 import { useAuthStore } from "../store/useAuthStore";
 
 export default function AuthModal({ isOpen, onClose }) {
@@ -11,7 +12,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const [localError, setLocalError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { login, register } = useAuthStore();
+  const { login, register, googleLogin } = useAuthStore();
 
   if (!isOpen) return null;
 
@@ -55,6 +56,7 @@ export default function AuthModal({ isOpen, onClose }) {
         {/* Close Button */}
         <button
           onClick={onClose}
+          aria-label="Close modal"
           className="absolute right-5 top-5 text-gray-400 hover:text-white transition-colors cursor-pointer"
         >
           <X size={20} />
@@ -88,7 +90,7 @@ export default function AuthModal({ isOpen, onClose }) {
             />
             <input
               type="text"
-              placeholder="Username"
+              placeholder={isRegister ? "Username" : "Username or Email"}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-[#1e202e] text-sm text-white placeholder-gray-500 pl-10 pr-4 py-3 rounded-xl border border-white/5 focus:outline-none focus:border-blue-500 transition-colors"
@@ -179,6 +181,33 @@ export default function AuthModal({ isOpen, onClose }) {
               : "Sign In"}
           </button>
         </form>
+
+        {/* Divider + Google OAuth Button */}
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-[11px] uppercase tracking-wider text-gray-500">or</span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <div className="flex justify-center">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              setLocalError("");
+              setLoading(true);
+              const res = await googleLogin(credentialResponse.credential, role);
+              setLoading(false);
+              if (res.success) {
+                onClose();
+              } else {
+                setLocalError(res.message);
+              }
+            }}
+            onError={() => setLocalError("Google Sign-In was cancelled or failed")}
+            theme="filled_black"
+            shape="pill"
+            text={isRegister ? "signup_with" : "continue_with"}
+          />
+        </div>
 
         {/* Toggle between Login and Register */}
         <div className="text-center mt-6 pt-4 border-t border-white/5 text-xs text-gray-400">
