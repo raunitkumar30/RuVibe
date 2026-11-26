@@ -285,10 +285,67 @@ export default function App() {
         ? "PODCAST"
         : "MUSIC";
 
-  const handleNavigateView = (viewName) => {
-    setCurrentView(viewName);
-    setSelectedPlaylist(null);
-    setSelectedArtist(null);
+  // ── Sync with Browser Back / Forward Buttons (HTML5 History API) ──
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "").toLowerCase();
+    const validViews = [
+      "explore",
+      "albums",
+      "artists",
+      "artist-profile",
+      "radio",
+      "podcast",
+      "favorites",
+      "favourites",
+      "recent",
+      "genres",
+      "playlist",
+      "my-uploads",
+    ];
+
+    if (hash && validViews.includes(hash)) {
+      const normalized = hash === "favourites" ? "favorites" : hash;
+      setCurrentView(normalized);
+      window.history.replaceState({ view: normalized }, "", `#${normalized}`);
+    } else {
+      window.history.replaceState({ view: "explore" }, "", "#explore");
+    }
+
+    const handlePopState = (event) => {
+      const targetView = event.state?.view || window.location.hash.replace("#", "") || "explore";
+      const normalized = targetView === "favourites" ? "favorites" : targetView;
+      setCurrentView(normalized);
+      if (event.state?.selectedPlaylist) {
+        setSelectedPlaylist(event.state.selectedPlaylist);
+      } else {
+        setSelectedPlaylist(null);
+      }
+      if (event.state?.selectedArtist) {
+        setSelectedArtist(event.state.selectedArtist);
+      } else {
+        setSelectedArtist(null);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleNavigateView = (viewName, extraState = {}) => {
+    const normalized = viewName === "favourites" ? "favorites" : viewName;
+    setCurrentView(normalized);
+    setSelectedPlaylist(extraState.playlist || null);
+    setSelectedArtist(extraState.artist || null);
+
+    window.history.pushState(
+      {
+        view: normalized,
+        selectedPlaylist: extraState.playlist || null,
+        selectedArtist: extraState.artist || null,
+      },
+      "",
+      `#${normalized}`
+    );
   };
 
   return (
@@ -329,8 +386,7 @@ export default function App() {
         onSelectView={handleNavigateView}
         setActiveTab={handleNavigateView}
         onSelectPlaylist={(pl) => {
-          setSelectedPlaylist(pl);
-          setCurrentView("playlist");
+          handleNavigateView("playlist", { playlist: pl });
         }}
         onRequireAuth={() => setIsAuthOpen(true)}
       />

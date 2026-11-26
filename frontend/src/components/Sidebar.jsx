@@ -55,41 +55,25 @@ export default function Sidebar({
     { id: "favorites", label: "Favourites", icon: Heart },
   ];
 
-  // 1. Fetch user's playlists
+  // 1. Fetch ONLY the logged-in user's playlists (no fake demo playlists)
   useEffect(() => {
     async function fetchPlaylists() {
       if (!isAuthenticated) {
-        setPlaylists([
-          { _id: "demo_1", name: "Design Flow" },
-          { _id: "demo_2", name: "Best of 2026" },
-          { _id: "demo_3", name: "Chill Vibe" },
-        ]);
+        setPlaylists([]);
         return;
       }
       try {
         const res = await api.get("/playlists");
-        const list = res.data?.playlists || [];
-        if (list.length > 0) {
-          setPlaylists(list);
-        } else {
-          setPlaylists([
-            { _id: "demo_1", name: "Design Flow" },
-            { _id: "demo_2", name: "Best of 2026" },
-            { _id: "demo_3", name: "Chill Vibe" },
-          ]);
-        }
-      } catch {
-        setPlaylists([
-          { _id: "demo_1", name: "Design Flow" },
-          { _id: "demo_2", name: "Best of 2026" },
-          { _id: "demo_3", name: "Chill Vibe" },
-        ]);
+        setPlaylists(res.data?.playlists || []);
+      } catch (err) {
+        console.error("Failed to fetch playlists:", err);
+        setPlaylists([]);
       }
     }
     fetchPlaylists();
   }, [isAuthenticated]);
 
-  // 2. Submit new playlist smoothly without prompt
+  // 2. Submit new playlist (requires login)
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!newPlaylistName.trim()) {
@@ -97,18 +81,15 @@ export default function Sidebar({
       return;
     }
 
-    const playlistName = newPlaylistName.trim();
-    setLoadingCreate(true);
-
     if (!isAuthenticated) {
-      const localPl = { _id: `local_${Date.now()}`, name: playlistName };
-      setPlaylists((prev) => [localPl, ...prev]);
       setIsCreating(false);
       setNewPlaylistName("");
-      setLoadingCreate(false);
-      showToast(`Created playlist "${playlistName}"`);
+      if (onRequireAuth) onRequireAuth();
       return;
     }
+
+    const playlistName = newPlaylistName.trim();
+    setLoadingCreate(true);
 
     try {
       const res = await api.post("/playlists", { name: playlistName });
@@ -118,9 +99,7 @@ export default function Sidebar({
       }
     } catch (err) {
       console.error("Create playlist error:", err);
-      const fallbackPl = { _id: `local_${Date.now()}`, name: playlistName };
-      setPlaylists((prev) => [fallbackPl, ...prev]);
-      showToast(`Created playlist "${playlistName}"`);
+      showToast(err.response?.data?.message || "Failed to create playlist", "info");
     } finally {
       setIsCreating(false);
       setNewPlaylistName("");
@@ -225,7 +204,14 @@ export default function Sidebar({
               Playlists
             </p>
             <button
-              onClick={() => setIsCreating(true)}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  if (onRequireAuth) onRequireAuth();
+                  return;
+                }
+                setIsCreating(true);
+              }}
+              aria-label="Create Playlist"
               className="text-gray-400 hover:text-white transition-colors cursor-pointer"
               title="Create Playlist"
             >
@@ -248,6 +234,7 @@ export default function Sidebar({
                 <button
                   type="submit"
                   disabled={loadingCreate}
+                  aria-label="Save playlist"
                   className="text-blue-400 hover:text-blue-300 p-1 rounded disabled:opacity-50 cursor-pointer"
                 >
                   {loadingCreate ? (
@@ -258,6 +245,7 @@ export default function Sidebar({
                 </button>
                 <button
                   type="button"
+                  aria-label="Cancel creating playlist"
                   onClick={() => {
                     setIsCreating(false);
                     setNewPlaylistName("");
@@ -270,25 +258,41 @@ export default function Sidebar({
             </form>
           )}
 
-          <div className="space-y-1">
-            {playlists.map((pl) => (
-              <button
-                key={pl._id}
-                onClick={() => {
-                  if (onSelectPlaylist) onSelectPlaylist(pl);
-                  if (onSelectView) onSelectView("playlist");
-                  if (setActiveTab) setActiveTab("playlist");
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all text-left cursor-pointer ${
-                  active === "playlist"
-                    ? "text-blue-400 bg-white/5"
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span className="truncate">{pl.name}</span>
-              </button>
-            ))}
-          </div>
+          {/* Playlist States: Guest / Empty / Populated */}
+          {!isAuthenticated ? (
+            <button
+              onClick={() => onRequireAuth && onRequireAuth()}
+              className="w-full text-left px-3 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 text-xs text-gray-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Sign in to view &amp; create your playlists
+            </button>
+          ) : playlists.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-gray-500">
+              No playlists yet. Click + to create one.
+            </p>
+          ) : (
+            <div className="space-y-1">
+              {playlists.map((pl) => (
+                <button
+                  key={pl._id}
+                  onClick={() => {
+                    if (onSelectPlaylist) {
+                      onSelectPlaylist(pl);
+                    } else if (onSelectView) {
+                      onSelectView("playlist");
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all text-left cursor-pointer ${
+                    active === "playlist"
+                      ? "text-blue-400 bg-white/5"
+                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <span className="truncate">{pl.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
