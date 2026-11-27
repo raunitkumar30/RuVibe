@@ -1,13 +1,21 @@
-import React, { useState } from "react";
-import { X, Upload, Music, Tag, FileAudio, Loader2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { X, Upload, Music, Tag, FileAudio, Loader2, Image as ImageIcon } from "lucide-react";
 import api from "../api/axios";
 
 export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [title, setTitle] = useState("");
   const [genre, setGenre] = useState("Pop");
   const [file, setFile] = useState(null);
+  const [coverImage, setCoverImage] = useState(null);
+  const [coverPreview, setCoverPreview] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
 
   if (!isOpen) return null;
 
@@ -17,6 +25,25 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
       setFile(selectedFile);
       setError("");
     }
+  };
+
+  const handleCoverChange = (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
+    if (selected.size > 5 * 1024 * 1024) {
+      setError("Cover image must be 5 MB or smaller");
+      return;
+    }
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+    setCoverImage(selected);
+    setCoverPreview(URL.createObjectURL(selected));
+    setError("");
+  };
+
+  const clearCover = () => {
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+    setCoverImage(null);
+    setCoverPreview("");
   };
 
   const handleSubmit = async (e) => {
@@ -38,6 +65,9 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
       formData.append("title", title.trim());
       formData.append("genre", genre.trim());
       formData.append("file", file);
+      if (coverImage) {
+        formData.append("coverImage", coverImage);
+      }
 
       // Let Axios and the browser generate the multipart boundary automatically
       const res = await api.post("/music/upload", formData);
@@ -48,6 +78,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
         setTitle("");
         setGenre("Pop");
         setFile(null);
+        clearCover();
         onClose();
       }
     } catch (err) {
@@ -139,6 +170,53 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
                 <option value="R&B">R&B</option>
                 <option value="Rock">Rock</option>
               </select>
+            </div>
+          </div>
+
+          {/* Optional Cover Art Picker */}
+          <div>
+            <label className="text-[11px] font-semibold uppercase text-gray-400 block mb-1.5">
+              Cover Artwork (Optional • JPG, PNG, WEBP)
+            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex-1 flex items-center gap-3 p-3 border border-dashed border-white/10 hover:border-blue-500/50 rounded-2xl bg-[#1e202e]/60 cursor-pointer transition-colors">
+                {coverPreview ? (
+                  <img
+                    src={coverPreview}
+                    alt="Cover preview"
+                    className="w-11 h-11 rounded-xl object-cover shrink-0 border border-white/10"
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 shrink-0">
+                    <ImageIcon size={18} />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold text-gray-200 block truncate">
+                    {coverImage ? coverImage.name : "Choose custom cover art"}
+                  </span>
+                  <span className="text-[10px] text-gray-500">
+                    {coverImage ? "Click to change" : "Auto-generated if skipped"}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleCoverChange}
+                  className="hidden"
+                />
+              </label>
+
+              {coverImage && (
+                <button
+                  type="button"
+                  onClick={clearCover}
+                  className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer"
+                  title="Remove cover image"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           </div>
 

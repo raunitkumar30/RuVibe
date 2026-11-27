@@ -18,25 +18,36 @@ const {
 
 // 1. Upload Music
 async function createMusic(req, res) {
-  const { title, album } = req.body;
-  const file = req.file;
+  const { title, album, genre } = req.body;
+  const audioFile = req.files?.file?.[0] || req.file;
+  const coverFile = req.files?.coverImage?.[0];
 
-  if (!file) {
+  if (!audioFile) {
     return res.status(400).json({ message: "Music file is required" });
   }
 
-  try {
-    const uploadResult = await uploadFile(file);
-    const metadata = await getTrackMetadata(title);
+  if (coverFile && coverFile.size > 5 * 1024 * 1024) {
+    return res.status(400).json({ message: "Cover image must be 5 MB or smaller" });
+  }
 
-      const music = await musicModel.create({
-      title: title,
+  try {
+    const [uploadResult, coverUploadResult, metadata] = await Promise.all([
+      uploadFile(audioFile),
+      coverFile ? uploadFile(coverFile) : Promise.resolve(null),
+      getTrackMetadata(title),
+    ]);
+
+    const cleanTitle = String(title || "Untitled Track").trim().slice(0, 150);
+    const cleanGenre = genre ? String(genre).trim().slice(0, 60) : metadata?.genre;
+
+    const music = await musicModel.create({
+      title: cleanTitle,
       artist: req.user.id,
       isUploaded: true,
       album: album || metadata?.albumTitle,
-      coverArt: metadata?.coverArt,
+      coverArt: coverUploadResult?.url || metadata?.coverArt,
       duration: metadata?.duration,
-      genre: metadata?.genre,
+      genre: cleanGenre,
       uri: uploadResult.url,
     });
 
@@ -432,6 +443,73 @@ async function getMyUploads(req, res) {
   }
 }
 
+// 14. Update Artist's Own Uploaded Track
+async function updateMyMusic(req, res) {
+  try {
+    const { musicId } = req.params;
+    const { title, genre } = req.body;
+
+    const music = await musicModel.findById(musicId);
+    if (!music) {
+      return res.status(404).json({ message: "Track not found" });
+    }
+
+    if (!music.artist || music.artist.toString() !== req.user.id) {
+      return res.status(403).json({ message: "You can only edit your own uploaded tracks" });
+    }
+
+    if (title !== undefined) {
+      const cleanTitle = String(title).trim().slice(0, 150);
+      if (!cleanTitle) {
+        return res.status(400).json({ message: "Track title cannot be empty" });
+      }
+      music.title = cleanTitle;
+    }
+
+    if (genre !== undefined) {
+      music.genre = String(genre).trim().slice(0, 60);
+    }
+
+    await music.save();
+    await music.populate("artist", "username email role");
+
+    return res.status(200).json({
+      message: "Track updated successfully",
+      music,
+    });
+  } catch (error) {
+    console.error("Error updating music:", error);
+    return res.status(500).json({ message: "Failed to update track" });
+  }
+}
+
+// 15. Delete Artist's Own Uploaded Track
+async function deleteMyMusic(req, res) {
+  try {
+    const { musicId } = req.params;
+    const music = await musicModel.findById(musicId);
+
+    if (!music) {
+      return res.status(404).json({ message: "Track not found" });
+    }
+
+    if (!music.artist || music.artist.toString() !== req.user.id) {
+      return res.status(403).json({ message: "You can only delete your own uploaded tracks" });
+    }
+
+    await musicModel.findByIdAndDelete(music._id);
+    await albumModel.updateMany({ musics: music._id }, { $pull: { musics: music._id } });
+
+    return res.status(200).json({
+      message: "Track deleted successfully",
+      musicId: music._id,
+    });
+  } catch (error) {
+    console.error("Error deleting music:", error);
+    return res.status(500).json({ message: "Failed to delete track" });
+  }
+}
+
 module.exports = {
   createMusic,
   createAlbum,
@@ -446,4 +524,6 @@ module.exports = {
   getLikedMusics,
   getTopArtists,
   getMyUploads,
+  updateMyMusic,
+  deleteMyMusic,
 };

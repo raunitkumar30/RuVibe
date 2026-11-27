@@ -1,31 +1,42 @@
-import React, { useEffect, useRef, useState } from "react";
-import { X, CheckCircle2, Heart, Info } from "lucide-react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { X, CheckCircle2, Heart, Info, Play, Pause, SkipForward, Loader2 } from "lucide-react";
 import api from "./api/axios";
 import { usePlayerStore } from "./store/usePlayerStore";
 import { useAuthStore } from "./store/useAuthStore";
 import { useFavoritesStore } from "./store/useFavoritesStore";
 import { useToastStore } from "./store/useToastStore";
 
-// Components
+// Core shell & initial Explore view (loaded eagerly for fast first paint)
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import HeroBanner from "./components/HeroBanner";
 import TopArtists from "./components/TopArtists";
 import TopCharts from "./components/TopCharts";
 import RightPlayer from "./components/RightPlayer";
-import AuthModal from "./components/AuthModal";
-import FavoritesView from "./components/FavoritesView";
-import UploadModal from "./components/UploadModal";
-import PlaylistView from "./components/PlaylistView";
-import AddToPlaylistModal from "./components/AddToPlaylistModal";
-import AlbumsView from "./components/AlbumsView";
-import ArtistsView from "./components/ArtistsView";
-import RecentView from "./components/RecentView";
-import GenresView from "./components/GenresView";
-import RadioView from "./components/RadioView";
-import PodcastView from "./components/PodcastView";
-import MyUploadsView from "./components/MyUploadsView";
-import FullScreenPlayer from "./components/FullScreenPlayer";
+
+// Secondary views & modals (code-split via React.lazy)
+const AuthModal = lazy(() => import("./components/AuthModal"));
+const FavoritesView = lazy(() => import("./components/FavoritesView"));
+const UploadModal = lazy(() => import("./components/UploadModal"));
+const PlaylistView = lazy(() => import("./components/PlaylistView"));
+const AddToPlaylistModal = lazy(() => import("./components/AddToPlaylistModal"));
+const AlbumsView = lazy(() => import("./components/AlbumsView"));
+const ArtistsView = lazy(() => import("./components/ArtistsView"));
+const RecentView = lazy(() => import("./components/RecentView"));
+const GenresView = lazy(() => import("./components/GenresView"));
+const RadioView = lazy(() => import("./components/RadioView"));
+const PodcastView = lazy(() => import("./components/PodcastView"));
+const MyUploadsView = lazy(() => import("./components/MyUploadsView"));
+const FullScreenPlayer = lazy(() => import("./components/FullScreenPlayer"));
+
+function ViewLoader() {
+  return (
+    <div className="flex items-center justify-center py-20 text-gray-400 gap-2.5">
+      <Loader2 size={20} className="animate-spin text-blue-500" />
+      <span className="text-xs font-medium">Loading view...</span>
+    </div>
+  );
+}
 
 export default function App() {
   const audioRef = useRef(null);
@@ -36,6 +47,7 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Songs Pagination State
   const [tracks, setTracks] = useState([]);
@@ -292,14 +304,12 @@ export default function App() {
       "explore",
       "albums",
       "artists",
-      "artist-profile",
       "radio",
       "podcast",
       "favorites",
       "favourites",
       "recent",
       "genres",
-      "playlist",
       "my-uploads",
     ];
 
@@ -308,23 +318,24 @@ export default function App() {
       setCurrentView(normalized);
       window.history.replaceState({ view: normalized }, "", `#${normalized}`);
     } else {
+      setCurrentView("explore");
       window.history.replaceState({ view: "explore" }, "", "#explore");
     }
 
     const handlePopState = (event) => {
       const targetView = event.state?.view || window.location.hash.replace("#", "") || "explore";
-      const normalized = targetView === "favourites" ? "favorites" : targetView;
+      let normalized = targetView === "favourites" ? "favorites" : targetView;
+
+      if (normalized === "playlist" && !event.state?.selectedPlaylist) {
+        normalized = "explore";
+      }
+      if (normalized === "artist-profile" && !event.state?.selectedArtist) {
+        normalized = "explore";
+      }
+
       setCurrentView(normalized);
-      if (event.state?.selectedPlaylist) {
-        setSelectedPlaylist(event.state.selectedPlaylist);
-      } else {
-        setSelectedPlaylist(null);
-      }
-      if (event.state?.selectedArtist) {
-        setSelectedArtist(event.state.selectedArtist);
-      } else {
-        setSelectedArtist(null);
-      }
+      setSelectedPlaylist(event.state?.selectedPlaylist || null);
+      setSelectedArtist(event.state?.selectedArtist || null);
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -349,7 +360,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#11121a] text-white overflow-hidden select-none relative">
+    <div className="flex h-dvh w-screen bg-[#11121a] text-white overflow-hidden select-none relative">
       {/* Hidden Native Audio Element */}
       <audio
         ref={audioRef}
@@ -373,11 +384,13 @@ export default function App() {
       )}
 
       {/* Full-Screen Ambient / Karaoke Player Modal */}
-      <FullScreenPlayer
-        isOpen={isFullScreenOpen}
-        onClose={() => setIsFullScreenOpen(false)}
-        onSeek={handleSeek}
-      />
+      <Suspense fallback={null}>
+        <FullScreenPlayer
+          isOpen={isFullScreenOpen}
+          onClose={() => setIsFullScreenOpen(false)}
+          onSeek={handleSeek}
+        />
+      </Suspense>
 
       {/* COLUMN 1: Left Sidebar */}
       <Sidebar
@@ -389,14 +402,17 @@ export default function App() {
           handleNavigateView("playlist", { playlist: pl });
         }}
         onRequireAuth={() => setIsAuthOpen(true)}
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
       />
 
       {/* COLUMN 2: Center Dashboard */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-dvh overflow-hidden">
         {/* Navbar */}
         <Navbar
           onOpenAuth={() => setIsAuthOpen(true)}
           onOpenUpload={() => setIsUploadOpen(true)}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           currentCategory={activeCategory}
           activeCategory={activeCategory}
           onSelectCategory={(tab) => {
@@ -413,7 +429,7 @@ export default function App() {
         />
 
         {/* Scrollable View Area below Navbar */}
-        <main className="flex-1 overflow-y-auto px-8 py-6 space-y-7 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 pb-24 xl:pb-6 space-y-7 custom-scrollbar">
           {/* VIEW 1: Explore / Home */}
           {currentView === "explore" && (
             <div className="space-y-6">
@@ -459,69 +475,72 @@ export default function App() {
             </div>
           )}
 
-          {/* VIEW 2: Liked Songs */}
-          {(currentView === "favorites" || currentView === "favourites") && (
-            <FavoritesView
-              onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-            />
-          )}
+          {/* Secondary Views (Lazy-Loaded) */}
+          <Suspense fallback={<ViewLoader />}>
+            {/* VIEW 2: Liked Songs */}
+            {(currentView === "favorites" || currentView === "favourites") && (
+              <FavoritesView
+                onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+              />
+            )}
 
-          {/* VIEW 3: Custom Playlist View */}
-          {currentView === "playlist" && selectedPlaylist && (
-            <PlaylistView
-              playlist={selectedPlaylist}
-              onBack={() => handleNavigateView("explore")}
-            />
-          )}
+            {/* VIEW 3: Custom Playlist View */}
+            {currentView === "playlist" && selectedPlaylist && (
+              <PlaylistView
+                playlist={selectedPlaylist}
+                onBack={() => handleNavigateView("explore")}
+              />
+            )}
 
-          {/* VIEW 4: Verified Artists Directory */}
-          {currentView === "artists" && (
-            <ArtistsView
-              onSelectArtist={(artist) => {
-                const name = typeof artist === "object" ? artist.name : artist;
-                handleFilterMusic(name);
-              }}
-            />
-          )}
+            {/* VIEW 4: Verified Artists Directory */}
+            {currentView === "artists" && (
+              <ArtistsView
+                onSelectArtist={(artist) => {
+                  const name = typeof artist === "object" ? artist.name : artist;
+                  handleFilterMusic(name);
+                }}
+              />
+            )}
 
-          {/* VIEW 5: Single Artist Profile View */}
-          {currentView === "artist-profile" && selectedArtist && (
-            <ArtistsView
-              initialArtist={selectedArtist}
-              onBack={() => handleNavigateView("explore")}
-            />
-          )}
+            {/* VIEW 5: Single Artist Profile View */}
+            {currentView === "artist-profile" && selectedArtist && (
+              <ArtistsView
+                initialArtist={selectedArtist}
+                onBack={() => handleNavigateView("explore")}
+              />
+            )}
 
-          {/* VIEW 6: Studio Albums Catalog */}
-          {currentView === "albums" && <AlbumsView />}
+            {/* VIEW 6: Studio Albums Catalog */}
+            {currentView === "albums" && <AlbumsView />}
 
-          {/* VIEW 7: Recently Played History */}
-          {currentView === "recent" && <RecentView />}
+            {/* VIEW 7: Recently Played History */}
+            {currentView === "recent" && <RecentView />}
 
-          {/* VIEW 8: Browse All Genres */}
-          {currentView === "genres" && (
-            <GenresView
-              onSelectGenre={(genre) => {
-                handleFilterMusic(genre);
-                handleNavigateView("explore");
-              }}
-            />
-          )}
+            {/* VIEW 8: Browse All Genres */}
+            {currentView === "genres" && (
+              <GenresView
+                onSelectGenre={(genre) => {
+                  handleFilterMusic(genre);
+                  handleNavigateView("explore");
+                }}
+              />
+            )}
 
-          {/* VIEW 9: Live Streaming Radio Stations */}
-          {currentView === "radio" && <RadioView />}
+            {/* VIEW 9: Live Streaming Radio Stations */}
+            {currentView === "radio" && <RadioView />}
 
-          {/* VIEW 10: Real Podcast Episodes Streaming */}
-          {currentView === "podcast" && <PodcastView />}
+            {/* VIEW 10: Real Podcast Episodes Streaming */}
+            {currentView === "podcast" && <PodcastView />}
 
-          {/* VIEW 11: Artist My Uploaded Songs */}
-          {currentView === "my-uploads" && (
-            <MyUploadsView
-              onBack={() => handleNavigateView("explore")}
-              onOpenUpload={() => setIsUploadOpen(true)}
-              onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
-            />
-          )}
+            {/* VIEW 11: Artist My Uploaded Songs */}
+            {currentView === "my-uploads" && (
+              <MyUploadsView
+                onBack={() => handleNavigateView("explore")}
+                onOpenUpload={() => setIsUploadOpen(true)}
+                onAddToPlaylist={(track) => setPlaylistTrackToAdd(track)}
+              />
+            )}
+          </Suspense>
         </main>
       </div>
 
@@ -531,31 +550,81 @@ export default function App() {
         onOpenFullScreen={() => setIsFullScreenOpen(true)}
       />
 
-      {/* Add To Playlist Floating Modal */}
-      {playlistTrackToAdd && (
-        <AddToPlaylistModal
-          isOpen={true}
-          track={playlistTrackToAdd}
-          onClose={() => setPlaylistTrackToAdd(null)}
-          onRequireAuth={() => {
-            setPlaylistTrackToAdd(null);
-            setIsAuthOpen(true);
-          }}
-        />
+      {/* Mobile / Tablet Compact Bottom Mini-Player (< xl) */}
+      {currentTrack && (
+        <div
+          onClick={() => setIsFullScreenOpen(true)}
+          className="xl:hidden fixed bottom-3 inset-x-3 z-30 bg-[#181a26]/95 backdrop-blur-xl border border-white/10 rounded-2xl px-3.5 py-2.5 shadow-2xl flex items-center justify-between gap-3 cursor-pointer"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <img
+              src={currentTrack.coverArt || "https://via.placeholder.com/100"}
+              alt={currentTrack.title}
+              className="w-10 h-10 rounded-xl object-cover shrink-0 bg-[#242738]"
+            />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">
+                {currentTrack.title}
+              </p>
+              <p className="text-[10px] text-gray-400 truncate">
+                {typeof currentTrack.artist === "object"
+                  ? currentTrack.artist?.username || currentTrack.artist?.name || "Artist"
+                  : currentTrack.artist || currentTrack.artistName || "Artist"}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="flex items-center gap-1.5 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={togglePlay}
+              aria-label={isPlaying ? "Pause" : "Play"}
+              className="w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-md cursor-pointer"
+            >
+              {isPlaying ? (
+                <Pause size={15} fill="currentColor" />
+              ) : (
+                <Play size={15} fill="currentColor" className="ml-0.5" />
+              )}
+            </button>
+            <button
+              onClick={playNext}
+              aria-label="Next track"
+              className="p-2 rounded-full text-gray-300 hover:text-white hover:bg-white/5 cursor-pointer"
+            >
+              <SkipForward size={16} />
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* User Auth Modal */}
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      {/* Modals (Lazy-Loaded) */}
+      <Suspense fallback={null}>
+        {playlistTrackToAdd && (
+          <AddToPlaylistModal
+            isOpen={true}
+            track={playlistTrackToAdd}
+            onClose={() => setPlaylistTrackToAdd(null)}
+            onRequireAuth={() => {
+              setPlaylistTrackToAdd(null);
+              setIsAuthOpen(true);
+            }}
+          />
+        )}
 
-      {/* Song / Album Upload Modal */}
-      <UploadModal
-        isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
-        onUploadSuccess={() => {
-          setIsUploadOpen(false);
-          fetchAllTracks();
-        }}
-      />
+        <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+
+        <UploadModal
+          isOpen={isUploadOpen}
+          onClose={() => setIsUploadOpen(false)}
+          onUploadSuccess={() => {
+            setIsUploadOpen(false);
+            fetchAllTracks();
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

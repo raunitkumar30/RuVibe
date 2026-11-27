@@ -17,6 +17,7 @@ import {
   Sparkles,
   Headphones,
   Trash2,
+  Menu,
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -34,12 +35,14 @@ export default function Navbar({
   onShowMyUploads,
   isPlayerCollapsed = false,
   onTogglePlayerCollapse,
+  onOpenMobileMenu,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilterTab, setActiveFilterTab] = useState("all");
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   // Result Buckets
   const [songResults, setSongResults] = useState([]);
@@ -50,9 +53,35 @@ export default function Navbar({
   const searchContainerRef = useRef(null);
   const profileDropdownRef = useRef(null);
 
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, becomeArtist } = useAuthStore();
   const { playTrack, clearRecent } = usePlayerStore();
   const { showToast } = useToastStore();
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatar]);
+
+  const renderUserAvatar = (sizeClass) => {
+    if (user?.avatar && !avatarError) {
+      return (
+        <img
+          src={user.avatar}
+          alt={user?.username || "User avatar"}
+          referrerPolicy="no-referrer"
+          onError={() => setAvatarError(true)}
+          className={`${sizeClass} rounded-full object-cover shrink-0 border border-white/10`}
+        />
+      );
+    }
+
+    return (
+      <div
+        className={`${sizeClass} rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm shadow-blue-500/20`}
+      >
+        {user?.username ? user.username[0].toUpperCase() : "U"}
+      </div>
+    );
+  };
 
   const mainTabs = ["MUSIC", "PODCAST", "LIVE"];
   const currentTab = (activeCategory || currentCategory || "MUSIC").toUpperCase();
@@ -205,20 +234,28 @@ export default function Navbar({
     radioResults.length > 0;
 
   return (
-    <header className="h-20 px-8 flex items-center justify-between bg-transparent select-none shrink-0 relative z-40 border-b border-white/5">
-      {/* 1. Category Switcher */}
-      <div className="flex items-center gap-7">
+    <header className="h-20 px-4 lg:px-8 flex items-center justify-between bg-transparent select-none shrink-0 relative z-40 border-b border-white/5 gap-3">
+      {/* 1. Mobile Menu + Category Switcher */}
+      <div className="flex items-center gap-3 sm:gap-7">
+        {onOpenMobileMenu && (
+          <button
+            onClick={onOpenMobileMenu}
+            aria-label="Open menu"
+            className="lg:hidden p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <Menu size={20} />
+          </button>
+        )}
         {mainTabs.map((tab) => {
           const isActive = currentTab === tab;
           return (
             <button
               key={tab}
               onClick={() => onSelectCategory && onSelectCategory(tab)}
-              className={`text-xs font-bold tracking-widest transition-all cursor-pointer relative pb-2 pt-1 ${
-                isActive
-                  ? "text-white font-extrabold"
-                  : "text-gray-400 hover:text-gray-200"
-              }`}
+              className={`text-xs font-bold tracking-widest transition-all cursor-pointer relative pb-2 pt-1 ${isActive
+                ? "text-white font-extrabold"
+                : "text-gray-400 hover:text-gray-200"
+                }`}
             >
               <span>{tab}</span>
               {isActive && (
@@ -230,7 +267,7 @@ export default function Navbar({
       </div>
 
       {/* 2. Floating Live Search Bar with Filter Pills & Dropdown */}
-      <div ref={searchContainerRef} className="relative flex-1 max-w-xl mx-8">
+      <div ref={searchContainerRef} className="relative flex-1 max-w-xl mx-2 sm:mx-6 lg:mx-8">
         <div className="relative flex items-center">
           <Search
             size={16}
@@ -276,11 +313,10 @@ export default function Navbar({
                   <button
                     key={tab.id}
                     onClick={() => setActiveFilterTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                      isActive
-                        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/30"
-                        : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
-                    }`}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${isActive
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-500/30"
+                      : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                      }`}
                   >
                     <Icon size={12} />
                     <span>{tab.label}</span>
@@ -501,9 +537,7 @@ export default function Navbar({
               onClick={() => setShowProfileDropdown((prev) => !prev)}
               className="flex items-center gap-2.5 bg-[#181a24] hover:bg-[#1e202e] p-1.5 pr-3 rounded-full border border-white/5 hover:border-white/10 transition-all cursor-pointer group shadow-md"
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-blue-500/20">
-                {user?.username ? user.username[0].toUpperCase() : "U"}
-              </div>
+              {renderUserAvatar("w-7 h-7")}
               <div className="flex flex-col text-left">
                 <span className="text-xs font-semibold text-white leading-tight group-hover:text-blue-400 transition-colors">
                   {user?.username}
@@ -514,9 +548,8 @@ export default function Navbar({
               </div>
               <ChevronDown
                 size={14}
-                className={`text-gray-400 transition-transform duration-200 ml-0.5 ${
-                  showProfileDropdown ? "rotate-180 text-blue-400" : ""
-                }`}
+                className={`text-gray-400 transition-transform duration-200 ml-0.5 ${showProfileDropdown ? "rotate-180 text-blue-400" : ""
+                  }`}
               />
             </button>
 
@@ -526,9 +559,7 @@ export default function Navbar({
                 {/* User Header Profile Card */}
                 <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 mb-1.5">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                      {user?.username ? user.username[0].toUpperCase() : "U"}
-                    </div>
+                    {renderUserAvatar("w-8 h-8")}
                     <div className="overflow-hidden">
                       <p className="text-xs font-bold text-white truncate">{user?.username}</p>
                       <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
@@ -611,6 +642,22 @@ export default function Navbar({
                     >
                       <Headphones size={14} className="text-blue-400" />
                       <span>Daily Flow Mix</span>
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        setShowProfileDropdown(false);
+                        const res = await becomeArtist();
+                        if (res.success) {
+                          showToast("Welcome to Artist Studio! You can now upload tracks.");
+                        } else {
+                          showToast(res.message || "Could not upgrade account", "error");
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 transition-all text-left cursor-pointer"
+                    >
+                      <Upload size={14} className="text-emerald-400" />
+                      <span>Switch to Artist Studio</span>
                     </button>
                   </>
                 )}

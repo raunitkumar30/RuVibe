@@ -10,6 +10,9 @@ import {
   Music2,
   ListPlus,
   Sparkles,
+  Edit2,
+  Trash2,
+  X,
 } from "lucide-react";
 import api from "../api/axios";
 import { usePlayerStore } from "../store/usePlayerStore";
@@ -19,6 +22,11 @@ import { useToastStore } from "../store/useToastStore";
 export default function MyUploadsView({ onBack, onOpenUpload, onAddToPlaylist }) {
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingTrack, setEditingTrack] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editGenre, setEditGenre] = useState("Pop");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { toggleLike, isLiked } = useFavoritesStore();
@@ -59,6 +67,49 @@ export default function MyUploadsView({ onBack, onOpenUpload, onAddToPlaylist })
   const handlePlayAll = () => {
     if (uploads.length > 0) {
       playTrack(uploads[0], uploads);
+    }
+  };
+
+  const openEditModal = (track) => {
+    setEditingTrack(track);
+    setEditTitle(track.title || "");
+    setEditGenre(track.genre || "Pop");
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingTrack || !editTitle.trim()) return;
+    setSavingEdit(true);
+    try {
+      const res = await api.patch(`/music/${editingTrack._id}`, {
+        title: editTitle.trim(),
+        genre: editGenre.trim(),
+      });
+      if (res.data?.music) {
+        setUploads((prev) =>
+          prev.map((item) => (item._id === editingTrack._id ? res.data.music : item))
+        );
+        showToast("Track updated successfully");
+        setEditingTrack(null);
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update track", "error");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteTrack = async (track) => {
+    if (!window.confirm(`Delete "${track.title}" permanently?`)) return;
+    setDeletingId(track._id);
+    try {
+      await api.delete(`/music/${track._id}`);
+      setUploads((prev) => prev.filter((item) => item._id !== track._id));
+      showToast("Track deleted successfully");
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to delete track", "error");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -152,9 +203,9 @@ export default function MyUploadsView({ onBack, onOpenUpload, onAddToPlaylist })
           <div className="grid grid-cols-12 text-[11px] font-bold text-gray-400 px-4 py-2 border-b border-white/5 uppercase tracking-wider">
             <span className="col-span-1 text-center">#</span>
             <span className="col-span-6 md:col-span-5">Title</span>
-            <span className="hidden md:block md:col-span-3">Album</span>
-            <span className="col-span-3 md:col-span-2 text-right">Time</span>
-            <span className="col-span-2 md:col-span-1 text-right">Actions</span>
+            <span className="hidden md:block md:col-span-2">Album</span>
+            <span className="col-span-2 md:col-span-2 text-right">Time</span>
+            <span className="col-span-3 md:col-span-2 text-right">Actions</span>
           </div>
 
           {/* Songs List */}
@@ -212,18 +263,18 @@ export default function MyUploadsView({ onBack, onOpenUpload, onAddToPlaylist })
                   </div>
 
                   {/* Column 3: Album */}
-                  <div className="hidden md:block md:col-span-3 text-xs text-gray-400 truncate pr-2">
+                  <div className="hidden md:block md:col-span-2 text-xs text-gray-400 truncate pr-2">
                     {track.album || "Single"}
                   </div>
 
                   {/* Column 4: Duration */}
-                  <div className="col-span-3 md:col-span-2 text-right text-xs text-gray-400 font-medium">
+                  <div className="col-span-2 md:col-span-2 text-right text-xs text-gray-400 font-medium">
                     {formatDuration(track.duration)}
                   </div>
 
-                  {/* Column 5: Like & Add to Playlist */}
+                  {/* Column 5: Like, Add to Playlist, Edit & Delete */}
                   <div
-                    className="col-span-2 md:col-span-1 flex items-center justify-end gap-2"
+                    className="col-span-3 md:col-span-2 flex items-center justify-end gap-1"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -250,10 +301,87 @@ export default function MyUploadsView({ onBack, onOpenUpload, onAddToPlaylist })
                         <ListPlus size={15} />
                       </button>
                     )}
+
+                    <button
+                      onClick={() => openEditModal(track)}
+                      className="p-1.5 text-gray-500 hover:text-blue-400 rounded-full transition-colors cursor-pointer"
+                      title="Edit Track"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteTrack(track)}
+                      disabled={deletingId === track._id}
+                      className="p-1.5 text-gray-500 hover:text-red-400 rounded-full transition-colors cursor-pointer disabled:opacity-40"
+                      title="Delete Track"
+                    >
+                      {deletingId === track._id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                    </button>
                   </div>
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Track Modal */}
+      {editingTrack && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-sm bg-[#161822] border border-white/10 rounded-3xl p-6 shadow-2xl">
+            <button
+              onClick={() => setEditingTrack(null)}
+              className="absolute right-4 top-4 text-gray-400 hover:text-white cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-bold text-white mb-4">Edit Track</h3>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-semibold uppercase text-gray-400 block mb-1.5">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full bg-[#1e202e] text-sm text-white px-3.5 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold uppercase text-gray-400 block mb-1.5">
+                  Genre
+                </label>
+                <input
+                  type="text"
+                  value={editGenre}
+                  onChange={(e) => setEditGenre(e.target.value)}
+                  className="w-full bg-[#1e202e] text-sm text-white px-3.5 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTrack(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 cursor-pointer"
+                >
+                  {savingEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

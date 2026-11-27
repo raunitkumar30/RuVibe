@@ -84,6 +84,7 @@ async function registerUser(req, res) {
         username: newUser.username,
         email: newUser.email,
         role: newUser.role,
+        avatar: newUser.avatar || "",
       },
     });
   } catch (error) {
@@ -137,6 +138,7 @@ async function loginUser(req, res) {
         username: user.username,
         email: user.email,
         role: user.role,
+        avatar: user.avatar || "",
       },
     });
   } catch (error) {
@@ -159,6 +161,7 @@ async function getMe(req, res) {
         username: user.username,
         email: user.email,
         role: user.role,
+        avatar: user.avatar || "",
         likedSongs: user.likedSongs || [],
       },
     });
@@ -258,10 +261,49 @@ async function googleLogin(req, res) {
   }
 }
 
+// 6. Upgrade Listener to Artist Account
+async function becomeArtist(req, res) {
+  try {
+    const user = await userModel.findById(req.user.id).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.role !== "artist") {
+      user.role = "artist";
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, getCookieOptions());
+
+    return res.status(200).json({
+      message: "Account upgraded to Artist Studio",
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar || "",
+      },
+    });
+  } catch (error) {
+    console.error("Become artist error:", error);
+    return res.status(500).json({ message: "Failed to upgrade account" });
+  }
+}
+
 module.exports = {
   registerUser,
   loginUser,
   getMe,
   logoutUser,
   googleLogin,
+  becomeArtist,
 };

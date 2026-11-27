@@ -178,7 +178,7 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
   // Standby Empty State (Only if no track has ever been played)
   if (!track) {
     return (
-      <aside className="relative w-80 h-screen bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col justify-between select-none shrink-0 z-20 text-center">
+      <aside className="hidden xl:flex relative w-80 h-dvh bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex-col justify-between select-none shrink-0 z-20 text-center">
         <div className="flex items-center gap-2 mb-4">
           <span className="w-2 h-2 rounded-full bg-gray-500"></span>
           <h2 className="text-xs font-bold text-gray-400 tracking-wider uppercase">
@@ -204,7 +204,7 @@ export default function RightPlayer({ onSeek, onOpenFullScreen }) {
   }
 
   return (
-    <aside className="relative w-80 h-screen bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex flex-col justify-between select-none overflow-y-auto shrink-0 z-20">
+    <aside className="hidden xl:flex relative w-80 h-dvh bg-[#14151f]/95 backdrop-blur-xl border-l border-white/5 p-6 flex-col justify-between select-none overflow-y-auto shrink-0 z-20">
       {/* 1. Top Header with Queue + Full Screen */}
       <div>
         <div className="flex items-center justify-between mb-4">

@@ -21,5 +21,6 @@ router.post("/login", authLimiter, asyncHandler(authController.loginUser));
 router.post("/google", authLimiter, asyncHandler(authController.googleLogin));
 router.post("/logout", authMiddleware.authUser, asyncHandler(authController.logoutUser));
 router.get("/me", authMiddleware.authUser, asyncHandler(authController.getMe));
+router.patch("/become-artist", authMiddleware.authUser, asyncHandler(authController.becomeArtist));
 
 module.exports = router;

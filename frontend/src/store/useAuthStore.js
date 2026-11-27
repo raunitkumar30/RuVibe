@@ -107,7 +107,27 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  // 4. Logout
+  // 4. Upgrade Listener to Artist Studio
+  becomeArtist: async () => {
+    set({ error: null });
+    try {
+      const res = await api.patch("/auth/become-artist");
+      if (res.data?.token && typeof window !== "undefined") {
+        localStorage.setItem("ruvibe_token", res.data.token);
+      }
+      set({
+        user: res.data.user,
+        isAuthenticated: true,
+      });
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || "Failed to upgrade account";
+      set({ error: message });
+      return { success: false, message };
+    }
+  },
+
+  // 5. Logout
   logout: async () => {
     try {
       await api.post("/auth/logout");

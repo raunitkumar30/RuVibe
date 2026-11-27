@@ -1,0 +1,269 @@
+[33mcommit 60038402df7c1121bb4b6984f310d7fd08547bb1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sat Nov 28 00:21:22 2026 +0530
+
+    feat: implement phases 1-4 (avatar, artist CRUD, cover art, responsive UI, security tests, lazy loading, error boundary)
+
+[33mcommit 9a7e430a8fd9017bdd136758a5f565c9023ea88b[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Fri Nov 27 02:04:26 2026 +0530
+
+    Added Google OAuth Login
+
+[33mcommit 37e551aa020dadf3cb762933feaff07c8a55ec2f[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Fri Nov 27 01:35:14 2026 +0530
+
+    fixed sidebar playlist/demo
+
+[33mcommit 619bab2c040cd5aff4bae7d3375c8b77adec4e59[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 16 21:56:30 2026 +0530
+
+    Artist upload section fixed
+
+[33mcommit db5966492aac984c6778b6611028fed4b177039f[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sun Nov 15 18:37:12 2026 +0530
+
+    Added Uploaded Song card
+
+[33mcommit 1f7752cf79632f3e732e70f72eaf1d85f8b90b60[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sat Nov 14 02:25:18 2026 +0530
+
+    Fixed podcast tab
+
+[33mcommit 61f2c0ba1fbb5db1a955ad6c1a0c5c0d0d1f3d1d[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Fri Nov 13 23:54:23 2026 +0530
+
+    Fixed auth bugs
+
+[33mcommit 687be19cfc87a18200bc66c21580366d5ddc13d9[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Fri Nov 13 23:43:59 2026 +0530
+
+    Fixed cookie config and added trust proxy in backend
+
+[33mcommit fc9ad1d3bbbb5e2f1e6b1fe9ca31d26c959e3a1f[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Thu Nov 12 14:24:49 2026 +0530
+
+    Fixed Seurity Audit bugs/1
+
+[33mcommit 02b8ab35db21ec71b970e41ad502f8b846946a4f[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Thu Nov 12 14:06:06 2026 +0530
+
+    Added Readme file
+
+[33mcommit a6d2be97f44973ebe29192ff8e3e96782277b07f[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Thu Nov 12 13:59:59 2026 +0530
+
+    Fied navbar ui
+
+[33mcommit 30730d4e18c898882fceb816770609961eeb9947[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Thu Nov 12 13:51:59 2026 +0530
+
+    Fied the top charts songs results/uploaded
+
+[33mcommit be797e05b1661b2ec3224b05552b23a3cdc67d99[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Thu Nov 12 13:46:44 2026 +0530
+
+    Removed Albums,Local from Library
+
+[33mcommit 3629c2f79d2101fcdd5f6a84ef8f87a8be439e86[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Wed Nov 11 23:00:59 2026 +0530
+
+    Updated useAuthStore
+
+[33mcommit 875d2682c921aed1ea28d4750c94ff689fa6c0ad[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 10 16:47:45 2026 +0530
+
+    Fixed logoutuser option
+
+[33mcommit 7664a8c562b8330f665776bc102723bf0f35a226[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 10 16:39:56 2026 +0530
+
+    Fixed security audits v2
+
+[33mcommit 551396f09ad5e1909d2a889705f914ba9d04284b[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 10 16:06:27 2026 +0530
+
+    Fixed backend security audit issues
+
+[33mcommit 99f97e5393e77e2200b6bcda0ca1af9c7b70902c[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 10 15:47:10 2026 +0530
+
+    Added the RuVibe logo,favicon
+
+[33mcommit 6f505e1bb727d52f67a0d9821154103cbafe8834[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 10 01:51:49 2026 +0530
+
+    Added dynamic alubums loading
+
+[33mcommit d353ddac53ac26eba6c2f51934a2f9f38baa48af[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 10 00:51:31 2026 +0530
+
+    Fixed the artist filter problem
+
+[33mcommit 20cb7c6f1d8be57dbe08da40198ce23d22e7d074[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 16:17:41 2026 +0530
+
+    Change the platform name to RuVibe
+
+[33mcommit a9dde82d43479817b1b9437217e7c36e0405c0c3[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 16:06:41 2026 +0530
+
+    Fixed the limited number of artist loading with pagination
+
+[33mcommit 350ba97bda0a36811f4c6f717772c32652a3c780[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 15:47:44 2026 +0530
+
+    Fixed the artist and top song fixed loading
+
+[33mcommit 7e3cf7d748aa64bc5b062a5a60833da3b2cd2182[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 15:30:02 2026 +0530
+
+    Added 30sec and skip options there
+
+[33mcommit 0484cba0309edc9faab8313d4e913781b12aec8b[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 15:14:41 2026 +0530
+
+    Added add to queue and clear it /feature
+
+[33mcommit 6300317e9f0dabf189d9cc075b500a3fbcd92d0b[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 15:07:10 2026 +0530
+
+    Added full screen music player mode
+
+[33mcommit aab29f8de71adfdfc7e3316036a145a09a6887df[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 15:02:14 2026 +0530
+
+    Fixed the real artist images bug
+
+[33mcommit c17fe7052988c5a8b813d10b638796b659ff704f[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 14:55:03 2026 +0530
+
+    Fixed top song loading dynamically
+
+[33mcommit 9e4bf628f70c48b42ecd2eee2254d9ae9ed6c03e[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 9 14:43:07 2026 +0530
+
+    Fixed playlist alerts issues
+
+[33mcommit 156573621f2d469a82493a6ef8b8ba29933bca35[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sun Nov 8 17:44:39 2026 +0530
+
+    Fixed api calling urls
+
+[33mcommit 8173117607367df9b48eab52aac2908f1f8dc469[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sun Nov 8 17:32:12 2026 +0530
+
+    Fixed 30 seconds playback problem
+
+[33mcommit 5b83c96b3317e998275378f423002f07e3989492[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sun Nov 8 17:13:47 2026 +0530
+
+    Completed podcast and radion cards
+
+[33mcommit 13cf6d314adf7a6d2647b09089a6a9f1933a0dd9[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sun Nov 8 17:07:08 2026 +0530
+
+    Made Local card
+
+[33mcommit 429647e425e91bb143c6f407ffeba1ebab9929db[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sat Nov 7 12:55:28 2026 +0530
+
+    Artist Card Updated
+
+[33mcommit cbf0acc8e3a2217d78c5f5ae6a67d2096f8ebcd3[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Sat Nov 7 12:49:08 2026 +0530
+
+    Music playback features
+
+[33mcommit 49318875a528886761a0f50a5c53105ad6d46301[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Fri Nov 6 15:17:30 2026 +0530
+
+    Added playlist create and add option
+
+[33mcommit 1067470303bb6903afa4af3ff8e7bf9411914ab8[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Fri Nov 6 12:53:33 2026 +0530
+
+    Added faviourites section/working
+
+[33mcommit 52b8b53ba58f2706a77c4b4d03947e2bf495f573[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Fri Nov 6 11:27:57 2026 +0530
+
+    Auth frontend for logging in done
+
+[33mcommit 75584509206a6954402e0363d24102171c636759[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Wed Nov 4 21:08:24 2026 +0530
+
+    Frontend working only fix will be later
+
+[33mcommit 00723514f38d5d898893f9d20fdd0c25cd3407be[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Wed Nov 4 20:37:35 2026 +0530
+
+    Backend phase 1 done
+
+[33mcommit ee4649966498506b856c5789c34daeefbe873d2e[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Wed Nov 4 01:29:42 2026 +0530
+
+    Restructure file structure for full stack
+
+[33mcommit bc9f2541884445ea264197262b6d95ed2454b697[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 3 19:17:24 2026 +0530
+
+    Delete manual.txt
+
+[33mcommit 2a4cc6b60bfc2401f93ad144770e84a52823324d[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Tue Nov 3 19:16:04 2026 +0530
+
+    Functional backend api complete -intermediate
+
+[33mcommit 98c9ca982b3a2a9913e9b1233c158ec0f0c2d8a9[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 2 18:58:06 2026 +0530
+
+    Spotify Clone music upload api complete
+
+[33mcommit a296e62bf96afe9c479cab6b24e04630acd32ee1[m
+Author: Raunit Kumar <raunitkumar232333@gmail.com>
+Date:   Mon Nov 2 17:51:51 2026 +0530
+
+    Spotify Clone first part backend

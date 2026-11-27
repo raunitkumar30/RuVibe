@@ -24,6 +24,8 @@ export default function Sidebar({
   setActiveTab,
   onSelectPlaylist,
   onRequireAuth,
+  isOpen = false,
+  onClose,
 }) {
   const [playlists, setPlaylists] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -40,6 +42,7 @@ export default function Sidebar({
     const normalized = viewId === "favourites" ? "favorites" : viewId;
     if (onSelectView) onSelectView(normalized);
     if (setActiveTab) setActiveTab(normalized);
+    if (onClose) onClose();
   };
 
   const menuItems = [
@@ -108,7 +111,18 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-60 h-screen bg-[#14151f] flex flex-col justify-between p-5 border-r border-white/5 select-none overflow-y-auto shrink-0 z-20">
+    <>
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 lg:static w-60 h-dvh bg-[#14151f] flex flex-col justify-between p-5 border-r border-white/5 select-none overflow-y-auto shrink-0 transform transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0`}
+      >
       <div>
         {/* Brand Logo: RuVibe with custom favicon/logo */}
         <div
@@ -281,6 +295,7 @@ export default function Sidebar({
                     } else if (onSelectView) {
                       onSelectView("playlist");
                     }
+                    if (onClose) onClose();
                   }}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-all text-left cursor-pointer ${
                     active === "playlist"
@@ -303,5 +318,6 @@ export default function Sidebar({
         </p>
       </div>
     </aside>
+    </>
   );
 }

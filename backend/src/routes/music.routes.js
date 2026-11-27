@@ -4,14 +4,14 @@ const musicController = require("../controllers/music.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const asyncHandler = require("../middlewares/asyncHandler");
 
-// 1. Secure Multer Configuration (Strict size + audio MIME filter)
+// 1. Secure Multer Configuration (Strict size + audio/cover image MIME filter)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 25 * 1024 * 1024, // 25 MB max audio file
+    fileSize: 25 * 1024 * 1024, // 25 MB max file
   },
   fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = [
+    const allowedAudioTypes = [
       "audio/mpeg",
       "audio/mp3",
       "audio/wav",
@@ -21,8 +21,20 @@ const upload = multer({
       "audio/x-m4a",
       "audio/mp4",
     ];
+    const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+    const mime = file.mimetype.toLowerCase();
 
-    if (allowedMimeTypes.includes(file.mimetype.toLowerCase())) {
+    if (file.fieldname === "coverImage") {
+      if (allowedImageTypes.includes(mime)) {
+        return cb(null, true);
+      }
+      return cb(
+        new Error("Invalid cover image type. Only JPG, PNG, and WEBP are permitted."),
+        false
+      );
+    }
+
+    if (allowedAudioTypes.includes(mime)) {
       cb(null, true);
     } else {
       cb(
@@ -53,7 +65,10 @@ router.get("/my-uploads", authMiddleware.authUser, asyncHandler(musicController.
 router.post(
   "/upload",
   authMiddleware.authArtist,
-  upload.single("file"),
+  upload.fields([
+    { name: "file", maxCount: 1 },
+    { name: "coverImage", maxCount: 1 },
+  ]),
   asyncHandler(musicController.createMusic)
 );
 router.post(
@@ -61,6 +76,8 @@ router.post(
   authMiddleware.authArtist,
   asyncHandler(musicController.createAlbum)
 );
+router.patch("/:musicId", authMiddleware.authArtist, asyncHandler(musicController.updateMyMusic));
+router.delete("/:musicId", authMiddleware.authArtist, asyncHandler(musicController.deleteMyMusic));
 router.post("/:musicId/like", authMiddleware.authUser, asyncHandler(musicController.toggleLikeMusic));
 
 module.exports = router;
