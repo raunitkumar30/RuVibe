@@ -116,7 +116,7 @@ export default function FullScreenPlayer({ isOpen, onClose, onSeek }) {
   const trackIsLiked = isLiked ? isLiked(track._id) : false;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0d0e15] overflow-hidden select-none flex flex-col justify-between animate-fadeIn">
+    <div className="fixed inset-0 z-[60] bg-[#0d0e15] overflow-hidden select-none flex flex-col justify-between animate-fadeIn">
       {/* 1. Dynamic Colored Ambient Backdrop */}
       <div
         className="absolute inset-0 bg-cover bg-center blur-3xl opacity-35 scale-125 pointer-events-none transition-all duration-1000"
