@@ -5,7 +5,13 @@
 </p>
 
 <p align="center">
-  <strong>A full-stack, high-fidelity music & audio streaming platform engineered for real-time playback, live chart streaming, verified artist publishing, and intelligent listener curation.</strong>
+  <strong>A full-stack, high-fidelity music & audio streaming platform engineered for real-time playback, live chart streaming, Google OAuth 2.0, verified artist publishing, and intelligent listener curation.</strong>
+</p>
+
+<p align="center">
+  <a href="https://ruvibe.vercel.app" target="_blank"><strong>🌐 Live App (Vercel)</strong></a> •
+  <a href="https://ruvibe.onrender.com/api/health" target="_blank"><strong>⚡ API Health (Render)</strong></a> •
+  <a href="https://github.com/raunitkumar30/RuVibe" target="_blank"><strong>📦 GitHub Repo</strong></a>
 </p>
 
 <p align="center">
@@ -23,13 +29,15 @@
 
 - **⚡ Real-Time Streaming Audio Engine:** Built on HTML5 Audio with click-to-seek, volume control, playback rate stepping (0.75x–2x), repeat, shuffle, and persistent playback resume across reloads.
 - **📈 Live Top Charts & Fallback Pipeline:** Dual-layer pipeline streaming live chart metadata from JioSaavn and iTunes APIs, combined seamlessly with community tracks.
-- **🎙️ Verified Artist Studio:** Artists can upload audio tracks directly to cloud storage (ImageKit) and access their private catalog under **"My Uploaded Songs"** (filtered strictly from MongoDB).
+- **🔐 Dual Auth + Google OAuth 2.0:** Email/password and Google Sign-In (`@react-oauth/google` + `google-auth-library`) with `httpOnly` cookies, Bearer token fallback, Google avatar display, and one-click Listener → Artist Studio upgrade.
+- **🎙️ Verified Artist Studio:** Artists can upload audio tracks with optional custom cover artwork to ImageKit CDN, edit title/genre metadata, delete tracks, and manage their catalog under **"My Uploaded Songs"**.
+- **📱 Responsive Desktop & Mobile UI:** 3-column desktop dock with a slide-over navigation drawer (`< lg`), compact bottom mini-player (`< xl`), and `React.lazy` code-splitting wrapped in an `ErrorBoundary`.
 - **✨ Intelligent Listener Curation:** Listeners get one-click mood curation (*Chill Hits*, *Acoustic Vibes*, *Trending Today*) directly through an animated profile pill dropdown.
 - **📀 Studio Albums & Artist Profiles:** Full studio album tracklists and verified artist profiles with paginated discographies.
 - **📻 Live Radio & Real Podcasts:** Built-in worldwide radio streaming and searchable podcast episodes.
 - **📝 Live Synchronized Lyrics:** Pulls track lyrics in real-time or provides fallback lyric cards.
 - **🌙 Sleep Timer & Full-Screen Ambient Mode:** Timed auto-pause countdown and immersive full-screen karaoke player.
-- **🔒 Production Security Posture:** Strict HTTP-only cookies, dual rate limiting, Helmet security headers, ReDoS prevention, and Multer MIME allowlists.
+- **🔒 Automated Security & Hardening:** Strict HTTP-only cookies, scoped rate limiting, Helmet security headers, ReDoS prevention, Multer MIME allowlists, fail-fast env validation, and a Vitest + Supertest security suite.
 
 ---
 
@@ -40,15 +48,17 @@
 - **Styling:** Tailwind CSS 4 (Glassmorphism & animated glowing UI)
 - **Icons:** Lucide React
 - **State Management:** Zustand 5 (Persistent player store, toast store, favorites store, auth store)
-- **HTTP Client:** Axios (Centralized instance with credentials and 401 interceptor)
+- **Authentication:** `@react-oauth/google` (Google Identity Services)
+- **HTTP Client:** Axios (Centralized instance with credentials, Bearer token injection, and 401 handler)
 
 ### **Backend**
 - **Runtime:** Node.js (Express 5)
 - **Database:** MongoDB with Mongoose 9 ODM
-- **Authentication:** JSON Web Tokens (JWT) stored in secure, `httpOnly`, `sameSite` cookies (with `Authorization: Bearer` fallback)
+- **Authentication:** JWT (`httpOnly`, `secure`, `sameSite` cookies + `Authorization: Bearer` fallback) & `google-auth-library`
 - **Password Hashing:** bcryptjs (Cost factor 10)
-- **Cloud Storage:** ImageKit Node.js SDK
+- **Cloud Storage:** ImageKit Node.js SDK v7
 - **Security:** Helmet (CORP cross-origin configured), `express-rate-limit`, cookie-parser
+- **Testing:** Vitest + Supertest (Automated security & auth test suite)
 - **Encryption:** CryptoJS DES decryption for streaming media URLs
 
 ---
@@ -80,33 +90,39 @@ ruvibe/
 │   │   ├── services/
 │   │   │   ├── musicApi.service.js      # JioSaavn, iTunes, Radio & Lyrics API integrations
 │   │   │   └── storage.service.js       # ImageKit media upload pipeline
-│   │   ├── app.js                       # Express app configuration & middleware pipeline
-│   │   └── server.js                    # Server bootstrap
-│   ├── .env.examples                    # Backend environment template
+│   │   ├── app.js                       # Express app configuration, health check & middleware pipeline
+│   ├── tests/
+│   │   └── security.test.js             # Vitest + Supertest security & RBAC test suite
+│   ├── server.js                        # Fail-fast env validation & server bootstrap
+│   ├── .env.example                     # Backend environment template
 │   └── package.json
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── api/
-│   │   │   └── axios.js                 # Configured Axios instance with 401 interceptor
+│   │   │   └── axios.js                 # Configured Axios instance with Bearer & 401 handling
 │   │   ├── components/
 │   │   │   ├── AddToPlaylistModal.jsx   # Add track to user playlist modal
 │   │   │   ├── AlbumsView.jsx           # Studio albums grid and tracklist drawer
 │   │   │   ├── ArtistsView.jsx          # Artists directory and profile view
-│   │   │   ├── AuthModal.jsx            # Sign in / Register modal
+│   │   │   ├── AuthModal.jsx            # Sign in / Register / Google OAuth modal
+│   │   │   ├── ErrorBoundary.jsx        # Graceful React crash recovery UI
 │   │   │   ├── FavoritesView.jsx        # Liked songs view
 │   │   │   ├── FullScreenPlayer.jsx     # Ambient full-screen karaoke player
+│   │   │   ├── GenresGrid.jsx           # Genre quick-filter cards
+│   │   │   ├── GenresView.jsx           # Browse all genres view
 │   │   │   ├── HeroBanner.jsx           # Dynamic #1 featured release header
-│   │   │   ├── Navbar.jsx               # Header with search, tabs, and profile dropdown
+│   │   │   ├── MyUploadsView.jsx        # Artist uploaded tracks with edit & delete
+│   │   │   ├── Navbar.jsx               # Responsive header, search, avatar & profile dropdown
 │   │   │   ├── PlaylistView.jsx         # Custom user playlist detail view
-│   │   │   ├── PodcastView.jsx          # Real podcast streaming
+│   │   │   ├── PodcastView.jsx          # Real podcast streaming by category
 │   │   │   ├── RadioView.jsx            # Live global radio stations
 │   │   │   ├── RecentView.jsx           # Listening history view
 │   │   │   ├── RightPlayer.jsx          # Docked player with lyrics & queue drawers
-│   │   │   ├── Sidebar.jsx              # Navigation sidebar with playlist creation
+│   │   │   ├── Sidebar.jsx              # Responsive drawer sidebar with real user playlists
 │   │   │   ├── TopArtists.jsx           # Trending artists carousel
 │   │   │   ├── TopCharts.jsx            # Live top chart tracks table
-│   │   │   └── UploadModal.jsx          # Artist audio file upload modal
+│   │   │   └── UploadModal.jsx          # Artist audio & optional cover art upload modal
 │   │   ├── store/
 │   │   │   ├── useAuthStore.js          # User session store
 │   │   │   ├── useFavoritesStore.js     # Liked songs store (optimistic UI)
@@ -135,16 +151,16 @@ FRONTEND_URL=http://localhost:5173
 
 MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/ruvibe?retryWrites=true&w=majority
 JWT_SECRET=your_super_secret_jwt_key_here
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
 
-IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
 IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
-IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 
 # Streaming APIs
 JIOSAAVN_API_URL=https://www.jiosaavn.com/api.php
 JIOSAAVN_DES_KEY=38346591
+JIOSAAVN_CHARTS_PLAYLIST_ID=1134548194
 ITUNES_API_URL=https://itunes.apple.com/search
-RADIO_BROWSER_API_URL=https://de1.api.radio-browser.info/json/stations/byname
+RADIO_BROWSER_API_URL=https://de1.api.radio-browser.info/json/stations/search
 LYRICS_API_URL=https://api.lyrics.ovh/v1
 ```
 
@@ -153,6 +169,7 @@ Create a `.env` file inside the `frontend` folder:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api
+VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
 ```
 
 ---
@@ -161,8 +178,8 @@ VITE_API_BASE_URL=http://localhost:3000/api
 
 ### **1. Clone the Repository**
 ```bash
-git clone https://github.com/your-username/ruvibe.git
-cd ruvibe
+git clone https://github.com/raunitkumar30/RuVibe.git
+cd RuVibe
 ```
 
 ### **2. Setup and Run the Backend**
@@ -181,6 +198,13 @@ npm install
 npm run dev
 ```
 *The frontend development server will launch at `http://localhost:5173`.*
+
+### **4. Run Automated Security Tests**
+```bash
+cd backend
+npm test
+```
+*Runs the Vitest + Supertest suite covering auth (`401`/`403`), privilege escalation sanitization, Multer MIME rejection, regex escaping, and rate limiting.*
 
 ---
 
@@ -203,12 +227,13 @@ RuVibe includes native desktop keyboard shortcuts:
 
 - **XSS-Resistant Cookies:** Auth tokens are stored in `httpOnly`, `secure`, and `sameSite` cookies to prevent JavaScript token theft.
 - **Dual Rate Limiting:**
-  - `authLimiter`: Strict 25 requests per 15-minute window on `/api/auth` to prevent brute-force attacks.
+  - `authLimiter`: Strict 25 requests per 15-minute window on `/register`, `/login`, and `/google` to prevent brute-force attacks without blocking `/me` session checks.
   - `apiLimiter`: 300 requests per 15-minute window on streaming and search endpoints.
 - **ReDoS Prevention:** Search queries are sanitized via a regex escaper prior to MongoDB query construction.
-- **Role-Based Access Control (RBAC):** Restricts music publishing and album creation strictly to authenticated users with `role: "artist"`.
+- **Role-Based Access Control (RBAC):** Restricts music publishing, editing, deletion, and album creation strictly to authenticated users with `role: "artist"` (with ownership checks on track updates/deletes).
 - **Ownership Verification:** Scopes private playlist access strictly to `{ _id, user: req.user.id }`.
-- **Upload Validation:** Capped at 25 MB with strict audio MIME filtering (`audio/mpeg`, `audio/wav`, `audio/ogg`, `audio/mp4`, `audio/aac`).
+- **Upload Validation:** Capped at 25 MB with strict audio (`mp3`, `wav`, `ogg`, `m4a`, `aac`) and optional cover art (`jpg`, `png`, `webp`, max 5 MB) MIME filtering.
+- **Fail-Fast Env Validation:** Server refuses to boot if required secrets (`MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `IMAGEKIT_PRIVATE_KEY`) are missing.
 
 ---
 
